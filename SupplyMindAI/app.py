@@ -167,42 +167,90 @@ def _condense_reason(text: str, max_len: int = 95) -> str:
     return (out[0].upper() + out[1:]).rstrip(".,") + "." if out and len(out) > 1 else "Requires attention."
 
 
-# SupplyMind palette (coloupallet.md) - UI only, not maps/charts/graphs
+# YC-style SaaS palette
 _PALETTE = {
-    "primary": "#0d6efd",
-    "primary_light": "#4dabf7",
-    "primary_dark": "#0958d9",
-    "cyan": "#22b8cf",
-    "cyan_light": "#63e6e2",
-    "dark_blue": "#1e3a5f",
-    "charcoal": "#212529",
-    "gray": "#6c757d",
-    "light_gray": "#e9ecef",
-    "off_white": "#f8fafc",
+    "primary": "#2563eb",
+    "primary_hover": "#1d4ed8",
+    "accent": "#0ea5e9",
+    "bg": "#f6f7f9",
+    "card_bg": "#ffffff",
+    "border": "#e5e7eb",
+    "text": "#111827",
+    "text_secondary": "#6b7280",
+    "success": "#22c55e",
+    "warning": "#f59e0b",
+    "danger": "#ef4444",
+    "kpi_bg": "#fafafa",
+    "light_gray": "#e5e7eb",
+    "off_white": "#f6f7f9",
     "white": "#ffffff",
-    "success": "#198754",
-    "warning": "#ffc107",
-    "danger": "#dc3545",
+    "chip_bg": "#eef2ff",
+    "chip_hover": "#e0e7ff",
 }
 
 app_ui = ui.page_fluid(
+    ui.tags.link(
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap",
+        rel="stylesheet",
+    ),
     ui.tags.style(
         f"""
-        body {{ background-color: {_PALETTE["off_white"]}; }}
-        .container-fluid {{ background-color: {_PALETTE["off_white"]}; }}
-        .card {{ background-color: {_PALETTE["white"]}; border-color: {_PALETTE["light_gray"]}; }}
-        .card-header {{ border-color: {_PALETTE["light_gray"]}; color: {_PALETTE["dark_blue"]}; }}
-        h5, h6 {{ color: {_PALETTE["dark_blue"]}; }}
-        .btn-primary {{ background-color: {_PALETTE["primary"]}; border-color: {_PALETTE["primary"]}; }}
-        .btn-primary:hover {{ background-color: {_PALETTE["primary_dark"]}; border-color: {_PALETTE["primary_dark"]}; }}
-        .btn-outline-secondary {{ color: {_PALETTE["primary"]}; border-color: {_PALETTE["primary"]}; }}
-        .btn-outline-secondary:hover {{ background-color: {_PALETTE["primary"]}; color: {_PALETTE["white"]}; }}
+        * {{ font-family: "Inter", ui-sans-serif, system-ui, sans-serif !important; }}
+        body {{ background-color: {_PALETTE["bg"]}; font-size: 0.9rem; color: {_PALETTE["text"]}; }}
+        .container-fluid {{ background-color: {_PALETTE["bg"]}; padding: 0 20px 20px; }}
+        .card {{ background-color: {_PALETTE["card_bg"]}; border: 1px solid {_PALETTE["border"]};
+          border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); padding: 18px;
+          transition: box-shadow 0.2s ease; }}
+        .card:hover {{ box-shadow: 0 4px 10px rgba(0,0,0,0.06); }}
+        .card-header {{ border-color: {_PALETTE["border"]}; color: {_PALETTE["text"]};
+          background: transparent; font-weight: 600; font-size: 1.15rem; }}
+        h5, h6 {{ color: {_PALETTE["text"]}; font-weight: 600; font-size: 1.15rem; }}
+        h6 {{ font-size: 0.95rem; }}
+        .text-muted {{ color: {_PALETTE["text_secondary"]} !important; font-size: 0.8rem; }}
+        .btn-primary {{ background-color: {_PALETTE["primary"]}; border: none; border-radius: 8px;
+          font-weight: 500; color: white; }}
+        .btn-primary:hover {{ background-color: {_PALETTE["primary_hover"]}; color: white; }}
+        .btn-outline-secondary {{ background: white; color: {_PALETTE["text"]}; border: 1px solid {_PALETTE["border"]};
+          border-radius: 8px; font-weight: 500; }}
+        .btn-outline-secondary:hover {{ background: #f9fafb; border-color: {_PALETTE["border"]}; color: {_PALETTE["text"]}; }}
+        .btn-outline-danger {{ border-radius: 8px; border-color: {_PALETTE["danger"]}; color: {_PALETTE["danger"]}; font-weight: 500; }}
+        .btn-outline-danger:hover {{ background: rgba(239,68,68,0.06); }}
         .text-primary {{ color: {_PALETTE["primary"]} !important; }}
         .border-primary {{ border-color: {_PALETTE["primary"]} !important; }}
-        .text-secondary {{ color: {_PALETTE["gray"]} !important; }}
-        .border-secondary {{ border-color: {_PALETTE["cyan"]} !important; }}
-        .alert-info {{ background-color: rgba(34, 184, 207, 0.15); border-color: {_PALETTE["cyan"]}; color: {_PALETTE["dark_blue"]}; }}
-        .bg-light {{ background-color: {_PALETTE["off_white"]} !important; }}
+        .text-secondary {{ color: {_PALETTE["text_secondary"]} !important; }}
+        .border-secondary {{ border-color: {_PALETTE["accent"]} !important; }}
+        .alert-info {{ background: rgba(14,165,233,0.08); border: 1px solid {_PALETTE["accent"]};
+          color: {_PALETTE["text"]}; border-radius: 8px; }}
+        .bg-light {{ background-color: {_PALETTE["kpi_bg"]} !important; border-radius: 8px; }}
+        .alert-danger {{ border-radius: 8px; }}
+        .kpi-card {{ background: {_PALETTE["kpi_bg"]}; border-radius: 10px; border: none;
+          min-width: 90px; padding: 12px 16px; box-shadow: none; transition: background 0.15s; }}
+        .kpi-card:hover {{ background: #f5f5f5; box-shadow: none; }}
+        .kpi-value {{ font-size: 1.5rem; font-weight: 600; color: {_PALETTE["text"]}; }}
+        .kpi-label {{ font-size: 0.75rem; color: {_PALETTE["text_secondary"]}; margin-top: 2px; }}
+        .kpi-dot {{ width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 6px; }}
+        .critical-list-item {{ padding: 10px 12px; border-radius: 8px; margin-bottom: 4px;
+          transition: background 0.15s; }}
+        .critical-list-item:hover {{ background: #f9fafb; }}
+        .critical-list-item:last-child {{ margin-bottom: 0; }}
+        .sim-chip {{ display: inline-block; padding: 6px 12px; border-radius: 999px;
+          background: {_PALETTE["chip_bg"]}; color: {_PALETTE["primary"]}; font-size: 0.8rem;
+          margin-right: 6px; margin-bottom: 6px; cursor: pointer; user-select: none;
+          border: none; transition: background 0.15s; }}
+        .sim-chip:hover {{ background: {_PALETTE["chip_hover"]}; }}
+        .sim-chip-selected {{ background: {_PALETTE["primary"]}; color: white; }}
+        .sim-chip-selected:hover {{ background: {_PALETTE["primary_hover"]}; color: white; }}
+        .sim-drop-zone {{ min-height: 48px; border-radius: 8px; border: 1px dashed {_PALETTE["border"]};
+          background: {_PALETTE["kpi_bg"]}; transition: all 0.15s; }}
+        .text-success {{ color: {_PALETTE["success"]} !important; }}
+        .text-warning {{ color: {_PALETTE["warning"]} !important; }}
+        .text-danger {{ color: {_PALETTE["danger"]} !important; }}
+        .border-end {{ border-color: {_PALETTE["border"]} !important; }}
+        .border-start {{ border-color: {_PALETTE["border"]} !important; }}
+        .btn-secondary {{ background: white; color: {_PALETTE["text"]}; border: 1px solid {_PALETTE["border"]}; border-radius: 8px; font-weight: 500; }}
+        .btn-secondary:hover {{ background: #f9fafb; color: {_PALETTE["text"]}; border-color: {_PALETTE["border"]}; }}
+        .offcanvas {{ border-left: 1px solid {_PALETTE["border"]}; }}
+        .offcanvas-header {{ border-color: {_PALETTE["border"]}; }}
         """
     ),
     ui.tags.header(
@@ -214,23 +262,23 @@ app_ui = ui.page_fluid(
                     style="width: 100%; height: 100%; object-fit: contain; display: block;",
                 ),
                 class_="d-flex align-items-center justify-content-center",
-                style="flex-shrink: 0; margin-right: 0.5rem; width: 128px; height: 128px;",
+                style="flex-shrink: 0; margin-right: 16px; width: 80px; height: 80px;",
             ),
             ui.div(
-                ui.span("Supply Mind AI", class_="fw-bold d-block", style=f"font-size: 3.5rem; letter-spacing: -0.02em; color: {_PALETTE['dark_blue']}; line-height: 1.1;"),
+                ui.span("Supply Mind AI", class_="fw-bold d-block", style=f"font-size: 2.75rem; letter-spacing: -0.02em; color: {_PALETTE['text']}; line-height: 1.2;"),
                 ui.p(
                     "AI-powered shipment intelligence. Track in-transit deliveries, predict delays, and optimize your supply chain in one dashboard.",
-                    class_="mb-0 mt-2",
-                    style=f"font-size: 0.8rem; line-height: 1.35; color: {_PALETTE['gray']};",
+                    class_="mb-0 mt-1",
+                    style=f"font-size: 0.8rem; line-height: 1.35; color: {_PALETTE['text_secondary']};",
                 ),
                 class_="flex-grow-1 d-flex flex-column justify-content-center",
-                style="min-width: 0; height: 128px;",
+                style="min-width: 0; height: 80px;",
             ),
             class_="d-flex align-items-center",
-            style="padding: 0.4rem 1rem; min-height: 0; justify-content: flex-start; align-items: center;",
+            style="padding: 20px 24px; justify-content: flex-start; align-items: center;",
         ),
-        class_="py-1",
-        style=f"border-bottom: 1px solid {_PALETTE['light_gray']}; background: {_PALETTE['white']};",
+        class_="py-0",
+        style=f"border-bottom: 1px solid {_PALETTE['border']}; background: {_PALETTE['card_bg']};",
     ),
     ui.output_ui("status"),
     ui.output_ui("results"),
@@ -241,7 +289,7 @@ app_ui = ui.page_fluid(
             class_="text-muted small mb-2",
         ),
         output_widget("hub_map"),
-        class_="card p-4 mt-3",
+        class_="card p-3 mt-2",
     ),
     ui.div(ui.input_text("escalate_which", label="", value=""), class_="d-none"),
     ui.div(ui.input_text("insight_detail_id", label="", value=""), class_="d-none"),
@@ -291,11 +339,11 @@ app_ui = ui.page_fluid(
                         ui.div(
                             ui.span("Click a parameter above to select", class_="text-muted"),
                             id="sim-selected-zone",
-                            class_="sim-drop-zone border border-2 border-dashed rounded p-3 mb-2",
+                            class_="sim-drop-zone p-3 mb-2",
                         ),
                         ui.div(ui.input_text("sim_selected_param", "", value=""), class_="d-none"),
                         ui.input_action_button("sim_run", "Run simulation", class_="btn-primary mt-2"),
-                        class_="card border rounded mt-3 p-3 h-100",
+                        class_="card mt-2 p-3 h-100",
                     ),
                 ),
                 class_="flex-grow-1 d-flex flex-column",
@@ -317,8 +365,8 @@ app_ui = ui.page_fluid(
                 } else {
                   var html = selected.map(function(p) {
                     var lab = p.length > 45 ? p.substring(0,45)+'...' : p;
-                    return '<span class="badge bg-success me-1 mb-1">'+lab+'</span> <a href="#" class="sim-clear-one small text-muted" data-p="'+p.replace(/"/g,'&quot;')+'">(x)</a> ';
-                  }).join('') + '<a href="#" class="sim-clear-link small ms-1">Clear all</a>';
+                    return '<span class="sim-chip sim-chip-selected">'+lab+'</span> <a href="#" class="sim-clear-one small text-muted ms-1" data-p="'+p.replace(/"/g,'&quot;')+'">(×)</a> ';
+                  }).join('') + '<a href="#" class="sim-clear-link small ms-2">Clear all</a>';
                   z.innerHTML = html;
                 }
                 if (typeof Shiny !== 'undefined' && Shiny.setInputValue) {
@@ -386,17 +434,16 @@ app_ui = ui.page_fluid(
         ),
         ui.tags.style(
             f"""
-            .sim-drop-zone {{ min-height: 48px; transition: background 0.15s; }}
-            .sim-drop-zone.sim-drag-over {{ background: rgba(13, 110, 253, 0.08); border-color: {_PALETTE["primary"]} !important; }}
+            .sim-drop-zone.sim-drag-over {{ background: rgba(37, 99, 235, 0.08) !important; border-color: {_PALETTE["primary"]} !important; }}
             .sim-draggable-param {{ cursor: pointer; user-select: none; }}
             .sim-draggable-param:active {{ cursor: grabbing; }}
-            .sim-chart-wrap {{ width: 100%; max-width: 100%; min-width: 300px; min-height: 420px; }}
-            .sim-results-row {{ display: flex; align-items: stretch; flex-wrap: nowrap; gap: 0.5rem; }}
+            .sim-chart-wrap {{ width: 100%; max-width: 100%; min-width: 300px; min-height: 380px; }}
+            .sim-results-row {{ display: flex; align-items: stretch; flex-wrap: nowrap; gap: 16px; }}
             .sim-results-row > .sim-results-chart {{ flex: 2 1 0%; min-width: 0; }}
-            .sim-results-row > .sim-results-rec {{ flex: 1 1 0%; min-width: 0; min-height: 420px; }}
+            .sim-results-row > .sim-results-rec {{ flex: 1 1 0%; min-width: 0; min-height: 380px; border-radius: 12px; border: 1px solid {_PALETTE["border"]}; }}
             """
         ),
-        class_="card p-4 mt-3",
+        class_="card p-3 mt-2",
     ),
     ui.output_ui("sim_results_card"),
 )
@@ -411,51 +458,47 @@ def _kpi_cards(on_time: int, delayed: int, critical: int):
     cards = [
         ui.div(
             ui.div(
-                ui.div(
-                    ui.span(str(total), class_="fs-2 fw-bold"),
-                    ui.div("Total In Transit", class_="text-muted small"),
-                    class_="text-center",
-                ),
-                class_="card-body",
+                ui.span(str(total), class_="kpi-value d-block"),
+                ui.div("Total In Transit", class_="kpi-label"),
+                class_="text-center",
             ),
-            class_="card border",
-            style="min-width: 100px;",
+            class_="kpi-card",
         ),
         ui.div(
             ui.div(
                 ui.div(
-                    ui.span(str(on_time), class_="fs-2 fw-bold text-success"),
-                    ui.div(f"On Time ({pct_on}%)", class_="text-muted small"),
-                    class_="text-center",
+                    ui.span("", class_="kpi-dot", style="background-color: #22c55e;"),
+                    ui.span(str(on_time), class_="kpi-value d-inline"),
+                    class_="mb-1",
                 ),
-                class_="card-body",
+                ui.div(f"On Time ({pct_on}%)", class_="kpi-label"),
+                class_="text-center",
             ),
-            class_="card border border-success",
-            style="min-width: 100px;",
+            class_="kpi-card",
         ),
         ui.div(
             ui.div(
                 ui.div(
-                    ui.span(str(delayed), class_="fs-2 fw-bold text-warning"),
-                    ui.div(f"Delayed ({pct_delayed}%)", class_="text-muted small"),
-                    class_="text-center",
+                    ui.span("", class_="kpi-dot", style="background-color: #f59e0b;"),
+                    ui.span(str(delayed), class_="kpi-value d-inline"),
+                    class_="mb-1",
                 ),
-                class_="card-body",
+                ui.div(f"Delayed ({pct_delayed}%)", class_="kpi-label"),
+                class_="text-center",
             ),
-            class_="card border border-warning",
-            style="min-width: 100px;",
+            class_="kpi-card",
         ),
         ui.div(
             ui.div(
                 ui.div(
-                    ui.span(str(critical), class_="fs-2 fw-bold text-danger"),
-                    ui.div(f"Critical ({pct_critical}%)", class_="text-muted small"),
-                    class_="text-center",
+                    ui.span("", class_="kpi-dot", style="background-color: #ef4444;"),
+                    ui.span(str(critical), class_="kpi-value d-inline"),
+                    class_="mb-1",
                 ),
-                class_="card-body",
+                ui.div(f"Critical ({pct_critical}%)", class_="kpi-label"),
+                class_="text-center",
             ),
-            class_="card border border-danger",
-            style="min-width: 100px;",
+            class_="kpi-card",
         ),
     ]
     return ui.div(*cards, class_="d-flex flex-wrap gap-2")
@@ -479,7 +522,7 @@ def _status_donut_with_confidence(on_time: int, delayed: int, critical: int, ins
                     labels=["On Time", "Delayed", "Critical"],
                     values=[on_time, delayed, critical],
                     hole=0.72,
-                    marker_colors=["#28a745", "#ffc107", "#dc3545"],
+                    marker_colors=["#22c55e", "#f59e0b", "#ef4444"],
                     textinfo="label+percent",
                     textposition="outside",
                     hovertemplate="%{label}<br>%{value} shipments<extra></extra>",
@@ -491,7 +534,8 @@ def _status_donut_with_confidence(on_time: int, delayed: int, critical: int, ins
                 margin=dict(t=30, b=30, l=30, r=30),
                 paper_bgcolor="rgba(0,0,0,0)",
                 plot_bgcolor="rgba(0,0,0,0)",
-                height=240,
+                height=220,
+                font=dict(family="Inter, ui-sans-serif, system-ui, sans-serif", size=12),
                 annotations=[
                     dict(
                         text=f"<b>{conf_pct}%</b><br>AI confidence",
@@ -639,7 +683,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ui.div(
                     ui.span(sid_safe, class_="fw-semibold"),
                     ui.p(reason, class_="mb-0 mt-1 small text-muted", style="font-size: 0.8rem;"),
-                    class_="py-2 px-3 border-bottom",
+                    class_="critical-list-item px-3",
                 )
             )
         return ui.div(
@@ -713,7 +757,6 @@ def server(input: Inputs, output: Outputs, session: Session):
                 onclick=f"Shiny.setInputValue('insight_detail_id', '{js_val}', {{priority: 'event'}});",
                 title="See full insight",
             )
-            is_last = i == len(critical_list) - 1
             critical_cards.append(
                 ui.div(
                     ui.div(
@@ -722,7 +765,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                         class_="d-flex align-items-center justify-content-between gap-2 mb-0",
                     ),
                     ui.p(reason, class_="mb-0 mt-1 small text-muted", style="font-size: 0.75rem; line-height: 1.3;"),
-                    class_="py-2 px-3 border-bottom" if not is_last else "py-2 px-3",
+                    class_="critical-list-item",
                     style="max-width: 100%;",
                 )
             )
@@ -758,18 +801,18 @@ def server(input: Inputs, output: Outputs, session: Session):
                     ),
                     ui.div(
                         *critical_cards if critical_cards else [
-                            ui.div(ui.span("No critical shipments.", class_="text-muted small"), class_="py-3")
+                            ui.div(ui.span("No critical shipments.", class_="text-muted small"), class_="py-3 px-3")
                         ],
-                        class_="overflow-auto border rounded",
-                        style="flex: 1; min-height: 120px; max-height: 200px;",
+                        class_="",
+                        style=f"flex: 1; min-height: 120px; border-radius: 8px; border: 1px solid {_PALETTE['border']}; background: {_PALETTE['kpi_bg']};",
                     ),
                     class_="p-3 d-flex flex-column",
-                    style=f"flex: 1; min-width: 0; border-left: 1px solid {_PALETTE['light_gray']};",
+                    style=f"flex: 1; min-width: 0; border-left: 1px solid {_PALETTE['border']};",
                 ),
                 class_="d-flex gap-0",
                 style="width: 100%;",
             ),
-            class_="card border rounded",
+            class_="card",
         )
 
     # --- Optimization insights ---
@@ -878,7 +921,8 @@ def server(input: Inputs, output: Outputs, session: Session):
             fig = go.Figure().add_annotation(
                 text="Run analysis to see hub map", x=0.5, y=0.5, showarrow=False, font_size=14
             )
-            fig.update_layout(height=420, margin=dict(t=10, b=10, l=10, r=10))
+            fig.update_layout(height=400, margin=dict(t=10, b=10, l=10, r=10),
+                paper_bgcolor="rgba(0,0,0,0)", font=dict(family="Inter, ui-sans-serif, system-ui, sans-serif"))
             return fig
         fig = go.Figure()
         if all_hubs:
@@ -888,7 +932,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                     lon=[h["lon"] for h in all_hubs],
                     text=[h["hub_name"] for h in all_hubs],
                     name="All hubs",
-                    marker=dict(size=6, color="#212529", symbol="circle"),
+                    marker=dict(size=6, color="#111827", symbol="circle"),
                     hovertemplate="%{text}<extra></extra>",
                     mode="markers",
                 )
@@ -898,9 +942,9 @@ def server(input: Inputs, output: Outputs, session: Session):
         orange = [h for h in status_hubs if h.get("status") == "orange"]
         green = [h for h in status_hubs if h.get("status") == "green"]
         for color, data, name in [
-            ("#dc3545", red, "Critical"),
-            ("#ffc107", orange, "Delayed"),
-            ("#28a745", green, "On-time"),
+            ("#ef4444", red, "Critical"),
+            ("#f59e0b", orange, "Delayed"),
+            ("#22c55e", green, "On-time"),
         ]:
             if not data:
                 continue
@@ -927,16 +971,19 @@ def server(input: Inputs, output: Outputs, session: Session):
         fig.update_geos(
             scope="usa",
             showland=True,
-            landcolor="rgb(243, 243, 243)",
-            coastlinecolor="rgb(204, 204, 204)",
+            landcolor="rgb(246, 247, 249)",
+            coastlinecolor="#e5e7eb",
             projection_type="albers usa",
         )
         fig.update_layout(
-            height=420,
+            height=400,
             margin=dict(t=10, b=10, l=10, r=10),
             autosize=True,
             showlegend=True,
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=10)),
+            font=dict(family="Inter, ui-sans-serif, system-ui, sans-serif", size=12),
             geo=dict(center=dict(lat=39, lon=-98)),
         )
         return fig
@@ -1000,7 +1047,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                     box_parts.append(ui.tags.ul(*[ui.tags.li(_fmt_change(p), class_="small") for p in changes_list], class_="mb-0"))
                 left_content.append(ui.div(*box_parts, class_="bg-light p-3 rounded mt-2"))
 
-        return ui.div(*left_content, class_="card border rounded mt-3 p-3 h-100 flex-grow-1")
+        return ui.div(*left_content, class_="card mt-2 p-3 h-100 flex-grow-1")
 
     # --- Simulation card ---
     sim_result = reactive.value(None)
@@ -1064,7 +1111,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             chips.append(
                 ui.tags.span(
                     label_short,
-                    class_="badge bg-primary me-1 mb-1 sim-draggable-param",
+                    class_="sim-chip sim-draggable-param",
                     draggable="true",
                     data_param=lb,
                 )
@@ -1168,7 +1215,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ui.output_ui("sim_results"),
                 class_="card-body p-4",
             ),
-            class_="card border mt-3",
+            class_="card mt-2",
         )
 
     @render.ui
@@ -1195,7 +1242,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ui.div(
                     ui.h6("Recommendations", class_="card-title mb-2"),
                     ui.output_ui("sim_recommendation"),
-                    class_="card border sim-results-rec p-3",
+                    class_="sim-results-rec p-3",
                 ),
                 class_="sim-results-row",
             ),
@@ -1212,7 +1259,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             fig.update_layout(height=420, margin=dict(t=30, b=30, l=30, r=30), xaxis=dict(visible=False), yaxis=dict(visible=False))
             return fig
         fig = go.Figure()
-        colors = ["#0d6efd", "#198754", "#fd7e14", "#6f42c1", "#dc3545"]
+        colors = ["#2563eb", "#22c55e", "#f59e0b", "#8b5cf6", "#ef4444"]
         for i, c in enumerate(res.get("curves", [])):
             curve = c.get("curve", [])
             label = c.get("label", f"Case {i+1}")
@@ -1234,25 +1281,27 @@ def server(input: Inputs, output: Outputs, session: Session):
                     showlegend=False,
                 ))
         fig.update_layout(
-            height=420,
+            height=400,
             autosize=True,
             xaxis_title="Investment ($)",
             yaxis_title="On-time count",
-            margin=dict(t=50, b=80, l=55, r=30),
+            margin=dict(t=40, b=70, l=50, r=20),
             showlegend=True,
+            xaxis=dict(showgrid=True, gridcolor="#f1f5f9", zeroline=False),
+            yaxis=dict(showgrid=True, gridcolor="#f1f5f9", zeroline=False),
             legend=dict(
                 orientation="h",
                 yanchor="top",
-                y=-0.18,
+                y=-0.15,
                 xanchor="center",
                 x=0.5,
-                bgcolor="rgba(255,255,255,0.9)",
-                bordercolor="rgba(0,0,0,0.1)",
-                borderwidth=1,
+                bgcolor="rgba(0,0,0,0)",
+                bordercolor="rgba(0,0,0,0)",
+                font=dict(size=11),
             ),
-            paper_bgcolor="rgba(248,250,252,0.8)",
-            plot_bgcolor="rgba(255,255,255,0.95)",
-            font=dict(family="Inter, system-ui, sans-serif", size=12),
+            paper_bgcolor="rgba(0,0,0,0)",
+            plot_bgcolor="rgba(0,0,0,0)",
+            font=dict(family="Inter, ui-sans-serif, system-ui, sans-serif", size=12),
             hovermode="x unified",
         )
         return fig
