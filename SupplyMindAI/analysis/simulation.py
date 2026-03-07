@@ -3,7 +3,7 @@ Simulation engine for supply chain parameter levers.
 Computes simulated delays under hypothetical lever values and finds sweet spots.
 """
 from datetime import datetime
-from typing import Any
+from typing import Any, Optional
 
 ALPHA = 3.0  # Congestion delay coefficient (hours per 100% overflow)
 
@@ -24,7 +24,7 @@ def lever_value_to_usd(param_type: str, lever_value: float, value_min: float) ->
     return delta * cost
 
 
-def _parse_iso(s: str | None):
+def _parse_iso(s: Optional[str]):
     """Parse ISO datetime string to datetime."""
     if not s:
         return None
@@ -66,14 +66,14 @@ def _congestion_contrib(L: float, C: float, alpha: float = ALPHA) -> float:
     return overflow * alpha
 
 
-def _hub_matches(stop: dict, target_hub: str | None) -> bool:
+def _hub_matches(stop: dict, target_hub: Optional[str]) -> bool:
     """True if stop is at target hub, or target_hub is None (apply to all)."""
     if not target_hub:
         return True
     return str(stop.get("hub_name", "")).strip().lower() == str(target_hub).strip().lower()
 
 
-def _sim_delay_hub_capacity(payload: dict, value: float, target_hub: str | None) -> float:
+def _sim_delay_hub_capacity(payload: dict, value: float, target_hub: Optional[str]) -> float:
     """
     Simulate delay with hub capacity multiplier.
     value = capacity multiplier k (e.g. 1.2 = 20% increase).
@@ -126,8 +126,8 @@ def simulate_delays(
     on_time_raw: list[dict],
     delayed_raw: list[dict],
     param_type: str,
-    target_hub: str | None,
-    target_route: str | None,
+    target_hub: Optional[str],
+    target_route: Optional[str],
     value: float,
 ) -> dict[str, Any]:
     """
@@ -184,8 +184,8 @@ def find_sweet_spot(
     on_time_raw: list[dict],
     delayed_raw: list[dict],
     param_type: str,
-    target_hub: str | None,
-    target_route: str | None,
+    target_hub: Optional[str],
+    target_route: Optional[str],
     value_min: float,
     value_max: float,
     steps: int = 11,

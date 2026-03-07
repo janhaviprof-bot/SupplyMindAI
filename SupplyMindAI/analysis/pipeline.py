@@ -281,7 +281,7 @@ def get_all_insights() -> list[dict]:
     rows = execute_query(
         """
         SELECT i.insight_id, i.shipment_id, i.flag_status, i.predicted_arrival, i.reasoning,
-               s.final_deadline
+               i.confidence, s.final_deadline
         FROM insights i
         LEFT JOIN shipments s ON s.shipment_id = i.shipment_id
         ORDER BY i.shipment_id
@@ -290,21 +290,74 @@ def get_all_insights() -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def _upsert_insight(shipment_id: str, flag_status: str, predicted_arrival, reasoning: str | None = None):
+def get_hub_map_data_from_insights() -> dict:
+    """
+    Build hub map data from Feature 1 (in-transit predictions).
+    Returns {all_hubs: [...], status_hubs: [...]} for map display.
+    Status: red=Critical, orange=Delayed, green=On Time (worst flag among shipments using that hub).
+    """
+    insights = get_all_insights()
+    if not insights:
+        all_rows = execute_query("SELECT hub_name, lat, lon FROM hubs")
+        all_hubs = [
+            {"hub_name": r["hub_name"], "lat": float(r["lat"]), "lon": float(r["lon"])}
+            for r in all_rows
+            if r.get("lat") is not None and r.get("lon") is not None
+        ]
+        return {"all_hubs": all_hubs, "status_hubs": []}
+    sid_to_flag = {r["shipment_id"]: (r.get("flag_status") or "").strip().lower() for r in insights if r.get("shipment_id")}
+    shipment_ids = list(sid_to_flag.keys())
+    stops_by_shipment = _fetch_stops_and_enrich(shipment_ids)
+    hub_to_flags = {}
+    for sid, stops in stops_by_shipment.items():
+        flag = sid_to_flag.get(sid, "on time")
+        for s in stops:
+            hn = s.get("hub_name")
+            if hn:
+                hub_to_flags.setdefault(hn, set()).add(flag)
+    all_rows = execute_query("SELECT hub_name, lat, lon FROM hubs")
+    coords = {r["hub_name"]: (float(r["lat"]), float(r["lon"])) for r in all_rows if r.get("lat") is not None and r.get("lon") is not None}
+    all_hubs = [{"hub_name": h, "lat": coords[h][0], "lon": coords[h][1]} for h in coords]
+    status_order = {"critical": 3, "delayed": 2, "on time": 1}
+    status_hubs = []
+    for hn, flags in hub_to_flags.items():
+        if hn not in coords:
+            continue
+        worst = max(flags, key=lambda f: status_order.get(f, 0))
+        status = "red" if worst == "critical" else ("orange" if worst == "delayed" else "green")
+        status_hubs.append({
+            "hub_name": hn,
+            "lat": coords[hn][0],
+            "lon": coords[hn][1],
+            "status": status,
+            "in_delayed_count": sum(1 for f in flags if f in ("delayed", "critical")),
+            "risk_categories": [],
+        })
+    return {"all_hubs": all_hubs, "status_hubs": status_hubs}
+
+
+def _upsert_insight(
+    shipment_id: str,
+    flag_status: str,
+    predicted_arrival,
+    reasoning: str | None = None,
+    confidence: int | None = None,
+):
     """UPSERT a row into insights."""
     insight_id = f"insight_{shipment_id}"
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                INSERT INTO insights (insight_id, shipment_id, flag_status, predicted_arrival, reasoning)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO insights (insight_id, shipment_id, flag_status, predicted_arrival, reasoning, confidence)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 ON CONFLICT (insight_id) DO UPDATE SET
                     flag_status = EXCLUDED.flag_status,
                     predicted_arrival = EXCLUDED.predicted_arrival,
-                    reasoning = COALESCE(EXCLUDED.reasoning, insights.reasoning)
+                    reasoning = COALESCE(EXCLUDED.reasoning, insights.reasoning),
+                    confidence = COALESCE(EXCLUDED.confidence, insights.confidence)
                 """,
-                (insight_id, shipment_id, flag_status, predicted_arrival, reasoning),
+                (insight_id, shipment_id, flag_status, predicted_arrival, reasoning, confidence),
             )
             conn.commit()
 
@@ -383,7 +436,7 @@ def run_analysis() -> dict:
             reasoning = result.get("reasoning") or None
             conf_raw = result.get("confidence")
             conf = _confidence_score(conf_raw, payload, flag)
-            _upsert_insight(sid, flag, pred_arr_dt, reasoning)
+            _upsert_insight(sid, flag, pred_arr_dt, reasoning, confidence=conf)
             return {
                 "shipment_id": sid,
                 "flag_status": flag,

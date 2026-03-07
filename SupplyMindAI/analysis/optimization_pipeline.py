@@ -8,10 +8,21 @@ import os
 from collections import Counter
 from datetime import datetime, timedelta
 from pathlib import Path
+from typing import Optional
 
 from db.supabase_client import execute_query, get_connection
 
 MAX_SHIPMENTS = 200  # Cap for large date ranges
+
+
+def get_all_hub_coords() -> list[dict]:
+    """Return all hubs with lat/lon for map base layer (used before analysis runs)."""
+    rows = execute_query("SELECT hub_name, lat, lon FROM hubs")
+    return [
+        {"hub_name": r["hub_name"], "lat": float(r["lat"]), "lon": float(r["lon"])}
+        for r in rows
+        if r.get("lat") is not None and r.get("lon") is not None
+    ]
 
 
 def _load_env():
@@ -134,7 +145,7 @@ def _fetch_stops_with_hubs_risks(shipment_ids: list[str]) -> dict:
     if all_hub_names:
         hp = ",".join(["%s"] * len(all_hub_names))
         hub_rows = execute_query(
-            f"SELECT hub_name, current_load, max_capacity, status FROM hubs WHERE hub_name IN ({hp})",
+            f"SELECT hub_name, lat, lon, current_load, max_capacity, status FROM hubs WHERE hub_name IN ({hp})",
             tuple(all_hub_names),
         )
         hub_data = {r["hub_name"]: dict(r) for r in hub_rows}
@@ -239,6 +250,78 @@ def _split_and_metrics(shipments: list[dict], stops_by_shipment: dict) -> tuple[
     return on_time, delayed, metrics
 
 
+def _build_hub_map_data(on_time: list, delayed: list) -> dict:
+    """
+    Build hub data for map. Returns:
+    - "all_hubs": list of {hub_name, lat, lon} for every hub (black base layer)
+    - "status_hubs": list of {hub_name, lat, lon, status, in_delayed_count, risk_categories}
+      status = red (delayed + risks), orange (delayed, no risks), green (on-time only)
+    """
+    analysis_hub_names = set()
+    hub_delayed_count = Counter()
+    hub_has_risks = {}
+    hub_risk_cats = {}
+
+    for payload in delayed:
+        for stop in payload.get("stops", []):
+            hn = stop.get("hub_name")
+            if not hn:
+                continue
+            analysis_hub_names.add(hn)
+            hub_delayed_count[hn] += 1
+            risks = stop.get("risks", [])
+            if risks:
+                hub_has_risks[hn] = True
+                cats = hub_risk_cats.setdefault(hn, set())
+                for r in risks:
+                    if r.get("category"):
+                        cats.add(r["category"])
+                hub_risk_cats[hn] = cats
+
+    for payload in on_time:
+        for stop in payload.get("stops", []):
+            hn = stop.get("hub_name")
+            if hn:
+                analysis_hub_names.add(hn)
+
+    # Fetch ALL hubs for black base layer
+    all_rows = execute_query("SELECT hub_name, lat, lon FROM hubs")
+    all_hubs = []
+    coords = {}
+    for r in all_rows:
+        lat, lon = r.get("lat"), r.get("lon")
+        if lat is not None and lon is not None:
+            all_hubs.append({"hub_name": r["hub_name"], "lat": float(lat), "lon": float(lon)})
+            coords[r["hub_name"]] = (float(lat), float(lon))
+
+    status_hubs = []
+    for hn in analysis_hub_names:
+        latlon = coords.get(hn)
+        if not latlon:
+            continue
+        lat, lon = latlon
+        in_delayed = hub_delayed_count.get(hn, 0)
+        has_risks = hub_has_risks.get(hn, False)
+        risk_cats = list(hub_risk_cats.get(hn, []))
+
+        if in_delayed and has_risks:
+            status = "red"
+        elif in_delayed:
+            status = "orange"
+        else:
+            status = "green"
+
+        status_hubs.append({
+            "hub_name": hn,
+            "lat": lat,
+            "lon": lon,
+            "status": status,
+            "in_delayed_count": in_delayed,
+            "risk_categories": risk_cats,
+        })
+    return {"all_hubs": all_hubs, "status_hubs": status_hubs}
+
+
 # Canonical simulation parameter types (5 levers)
 SIM_PARAM_TYPES = (
     "hub_capacity",
@@ -249,7 +332,7 @@ SIM_PARAM_TYPES = (
 )
 
 
-def parse_recommendation_to_sim_param(text: str) -> dict | None:
+def parse_recommendation_to_sim_param(text: str) -> Optional[dict]:
     """
     Parse a recommendation string into a simulatable parameter.
     Returns {type, target_hub, target_route} or None if unparseable.
@@ -493,6 +576,7 @@ def run_optimization_insights(
         shipments = _fetch_delivered_shipments_by_date(start_ts, end_ts)
         if not shipments:
             result["summary_text"] = f"No delivered shipments in this period ({start_str}–{end_str}). Try a different date range."
+            result["hub_map_data"] = _build_hub_map_data([], [])
             return result
 
         shipment_ids = [s["shipment_id"] for s in shipments]
@@ -503,6 +587,7 @@ def run_optimization_insights(
         result["on_time_count"] = len(on_time)
         result["delayed_count"] = len(delayed)
         result["summary_text"] = f"Analyzed <strong>{len(on_time)} on-time</strong> and <strong>{len(delayed)} delayed</strong> deliveries ({start_str}–{end_str})."
+        result["hub_map_data"] = _build_hub_map_data(on_time, delayed)
         if include_raw_data:
             result["on_time_raw"] = on_time
             result["delayed_raw"] = delayed

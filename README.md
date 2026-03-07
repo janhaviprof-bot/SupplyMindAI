@@ -2,7 +2,15 @@
 
 AI-Augmented Delivery System for logistics optimization.
 
-See [SupplyMindAI/README_CONTEXT.md](SupplyMindAI/README_CONTEXT.md) for full project context, requirements, and database schema.
+## Project structure
+
+| Folder | Description |
+|--------|-------------|
+| `docs/` | Documentation (context, predictions, optimization) |
+| `SupplyMindAI/` | Shiny app (`app.py`), analysis pipeline, logo assets |
+| `db/` | Supabase client and database utilities |
+
+See [docs/context.md](docs/context.md) for full project context, requirements, and database schema.
 
 ## Shipment Analysis App
 

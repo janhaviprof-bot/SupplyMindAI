@@ -19,9 +19,8 @@ from shiny import App, Inputs, Outputs, Session, reactive, render, ui
 from htmltools import HTML
 from shinywidgets import output_widget, render_widget
 
-from analysis.pipeline import run_analysis, get_all_insights
+from analysis.pipeline import run_analysis, get_all_insights, get_hub_map_data_from_insights
 from analysis.optimization_pipeline import (
-    run_optimization_insights,
     run_optimization_insights_with_data,
     parse_recommendation_to_sim_param,
     call_openai_sim_insights,
@@ -169,15 +168,44 @@ def _condense_reason(text: str, max_len: int = 95) -> str:
 
 
 app_ui = ui.page_fluid(
-    ui.panel_title("SupplyMind — Shipment Analysis"),
-    ui.p(
-        "Analyzes in-transit shipments and flags them as On Time, Delayed, or Critical. "
-        + ("Runs automatically on load; " if _RUN_ANALYSIS_ON_LOAD else "")
-        + "Click below to run or re-run."
+    ui.tags.header(
+        ui.div(
+            ui.div(
+                ui.tags.img(
+                    src="supplymind-logo.png",
+                    alt="SupplyMind",
+                    style="width: 100%; height: 100%; object-fit: contain; display: block;",
+                ),
+                class_="d-flex align-items-center justify-content-center",
+                style="flex-shrink: 0; margin-right: 1rem; width: 128px; height: 128px;",
+            ),
+            ui.div(
+                ui.span("Supply Mind AI", class_="fw-bold d-block", style="font-size: 1.25rem; letter-spacing: -0.02em; color: #212529; line-height: 1.3;"),
+                ui.p(
+                    "AI-powered shipment intelligence. Track in-transit deliveries, predict delays, and optimize your supply chain in one dashboard.",
+                    class_="mb-0 mt-0.5",
+                    style="font-size: 0.8rem; line-height: 1.35; color: #6c757d;",
+                ),
+                class_="flex-grow-1 d-flex flex-column justify-content-center",
+                style="min-width: 0; height: 128px;",
+            ),
+            class_="d-flex align-items-center",
+            style="padding: 0.4rem 1rem; min-height: 0; justify-content: flex-start; align-items: center;",
+        ),
+        class_="py-1",
+        style="border-bottom: 1px solid #e9ecef; background: #fff;",
     ),
-    ui.input_action_button("rerun", "Re-run Analysis", class_="btn-primary"),
     ui.output_ui("status"),
     ui.output_ui("results"),
+    ui.div(
+        ui.h5("Prediction Map", class_="mb-2"),
+        ui.p(
+            "Hubs colored by AI prediction insights for in-transit shipments.",
+            class_="text-muted small mb-2",
+        ),
+        output_widget("hub_map"),
+        class_="card p-4 mt-3",
+    ),
     ui.div(ui.input_text("escalate_which", label="", value=""), class_="d-none"),
     ui.div(ui.input_text("insight_detail_id", label="", value=""), class_="d-none"),
     ui.div(
@@ -202,7 +230,7 @@ app_ui = ui.page_fluid(
     ui.hr(),
     # Single Supply Chain Optimization card (LHS + RHS divided)
     ui.div(
-        ui.h4("Supply Chain Optimization"),
+        ui.h5("Supply Chain Optimization", class_="mb-0"),
         ui.p(
             "Get AI-powered recommendations to improve your supply chain based on delivered shipment data."
         ),
@@ -423,7 +451,7 @@ def _status_donut_with_confidence(on_time: int, delayed: int, critical: int, ins
     else:
         conf_pct = 50
         if insights:
-            avg_conf = sum(r.get("confidence", 5) for r in insights) / len(insights)
+            avg_conf = sum((r.get("confidence") or 5) for r in insights) / len(insights)
             conf_pct = int(round(avg_conf / 10 * 100))
         fig = go.Figure(
             data=[
@@ -803,55 +831,148 @@ def server(input: Inputs, output: Outputs, session: Session):
             )
         return None
 
+    @render_widget
+    def hub_map():
+        """Feature 1: Hub map from in-transit predictions (On Time / Delayed / Critical)."""
+        try:
+            map_data = get_hub_map_data_from_insights()
+        except Exception:
+            map_data = {"all_hubs": [], "status_hubs": []}
+        all_hubs = map_data.get("all_hubs") or []
+        status_hubs = map_data.get("status_hubs") or []
+        if not all_hubs and not status_hubs:
+            try:
+                from analysis.optimization_pipeline import get_all_hub_coords
+                all_hubs = get_all_hub_coords()
+            except Exception:
+                pass
+        if not all_hubs and not status_hubs:
+            fig = go.Figure().add_annotation(
+                text="Run analysis to see hub map", x=0.5, y=0.5, showarrow=False, font_size=14
+            )
+            fig.update_layout(height=420, margin=dict(t=10, b=10, l=10, r=10))
+            return fig
+        fig = go.Figure()
+        if all_hubs:
+            fig.add_trace(
+                go.Scattergeo(
+                    lat=[h["lat"] for h in all_hubs],
+                    lon=[h["lon"] for h in all_hubs],
+                    text=[h["hub_name"] for h in all_hubs],
+                    name="All hubs",
+                    marker=dict(size=6, color="#212529", symbol="circle"),
+                    hovertemplate="%{text}<extra></extra>",
+                    mode="markers",
+                )
+            )
+        dot_size_base = 8
+        red = [h for h in status_hubs if h.get("status") == "red"]
+        orange = [h for h in status_hubs if h.get("status") == "orange"]
+        green = [h for h in status_hubs if h.get("status") == "green"]
+        for color, data, name in [
+            ("#dc3545", red, "Critical"),
+            ("#ffc107", orange, "Delayed"),
+            ("#28a745", green, "On-time"),
+        ]:
+            if not data:
+                continue
+            texts = [
+                f"{h['hub_name']}<br>"
+                + (f"{h.get('in_delayed_count', 0)} shipment(s) flagged" if h.get("in_delayed_count") else "On-time")
+                for h in data
+            ]
+            if color == "#dc3545":
+                sizes = [min(dot_size_base + 2 * (h.get("in_delayed_count") or 0), 16) for h in data]
+            else:
+                sizes = [dot_size_base] * len(data)
+            fig.add_trace(
+                go.Scattergeo(
+                    lat=[h["lat"] for h in data],
+                    lon=[h["lon"] for h in data],
+                    text=texts,
+                    name=name,
+                    marker=dict(size=sizes, color=color, line=dict(width=1, color="white"), symbol="circle"),
+                    hovertemplate="%{text}<extra></extra>",
+                    mode="markers",
+                )
+            )
+        fig.update_geos(
+            scope="usa",
+            showland=True,
+            landcolor="rgb(243, 243, 243)",
+            coastlinecolor="rgb(204, 204, 204)",
+            projection_type="albers usa",
+        )
+        fig.update_layout(
+            height=420,
+            margin=dict(t=10, b=10, l=10, r=10),
+            autosize=True,
+            showlegend=True,
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5, font=dict(size=10)),
+            geo=dict(center=dict(lat=39, lon=-98)),
+        )
+        return fig
+
     @render.ui
     def opt_results():
         result = opt_result()
-        if result is None:
-            return None
-        err = result.get("error")
-        if err:
-            return ui.div(
-                ui.p("Error:", class_="fw-bold"),
-                ui.p(err, class_="text-danger"),
-                class_="alert alert-danger mt-3",
-            )
-        summary_text = result.get("summary_text", "")
-        summary = result.get("summary", "")
-        control_params = result.get("control_parameters", [])
-        top_params = result.get("top_parameters", [])
+        err = result.get("error") if result else None
 
-        if not summary and not control_params and not top_params and summary_text:
-            return ui.div(
-                ui.p(HTML(summary_text), class_="text-muted mt-3"),
-                class_="mt-3",
-            )
-
-        parts = [ui.p(HTML(summary_text), class_="text-muted")]
-
-        if summary or control_params:
-            changes_list = control_params[:4]
-            box_parts = []
-            if summary:
-                box_parts.append(ui.p(summary, class_="mb-2"))
-            if changes_list:
-                box_parts.append(ui.p("Changes:", class_="fw-bold mb-1 mt-2"))
-                box_parts.append(ui.tags.ul(*[ui.tags.li(p) for p in changes_list], class_="mb-0 small"))
-            parts.append(ui.div(*box_parts, class_="bg-light p-3 rounded mt-3"))
-
-        copy_text = f"{summary}\n\nChanges:\n" + "\n".join(f"- {p}" for p in control_params[:4]) if (summary or control_params) else ""
-        if copy_text:
-            copy_id = "opt-copy-area"
-            parts.append(ui.div(
-                ui.HTML(
-                    f'<button type="button" class="btn btn-secondary btn-sm mt-3" '
-                    f'onclick="navigator.clipboard.writeText(document.getElementById(\'{copy_id}\').innerText);this.textContent=\'Copied!\';setTimeout(()=>this.textContent=\'Copy summary & recommendations\',1500)">'
-                    "Copy summary & recommendations</button>"
+        # Top of left card: date range + button (Feature 1 style)
+        header_row = ui.div(
+            ui.div(
+                ui.input_select(
+                    "opt_date_range",
+                    "Date range",
+                    choices={
+                        "yesterday": "Yesterday",
+                        "week": "Past week",
+                        "month": "Past month",
+                        "year": "Past year",
+                        "custom": "Custom",
+                    },
+                    selected="year",
                 ),
-                ui.pre(copy_text, id=copy_id, style="position:absolute;left:-9999px;"),
-                class_="mt-2",
-            ))
+                ui.panel_conditional(
+                    "input.opt_date_range === 'custom'",
+                    ui.input_date_range(
+                        "opt_custom_dates",
+                        "Custom date range",
+                        start=_default_start,
+                        end=_default_end,
+                    ),
+                ),
+                class_="flex-grow-1",
+            ),
+            ui.input_action_button("opt_get_insights", "Get Supply Chain Insights", class_="btn btn-outline-secondary btn-sm"),
+            class_="d-flex align-items-center justify-content-between gap-2 mb-3",
+        )
 
-        return ui.div(*parts, class_="mt-3")
+        left_content = [header_row]
+        if err:
+            left_content.append(ui.div(ui.p("Error:", class_="fw-bold"), ui.p(err, class_="text-danger"), class_="alert alert-danger small"))
+        elif result is None:
+            left_content.append(ui.p("Select date range and click to analyze.", class_="text-muted small"))
+        else:
+            summary_text = result.get("summary_text", "")
+            summary = result.get("summary", "")
+            control_params = result.get("control_parameters", [])
+            left_content.append(ui.p(HTML(summary_text), class_="text-muted small"))
+            if summary or control_params:
+                changes_list = control_params[:4]
+                box_parts = []
+                if summary:
+                    box_parts.append(ui.p(summary, class_="mb-2 small"))
+                if changes_list:
+                    box_parts.append(ui.p("Suggested changes:", class_="fw-bold mb-1 mt-2 small"))
+                    # Replace "mode" with "mode of transportation" for clarity
+                    def _fmt_change(p):
+                        s = str(p) if p else ""
+                        return re.sub(r"\b([Ff]aster|[Tt]ransit)\s+mode\b", r"\1 mode of transportation", s)
+                    box_parts.append(ui.tags.ul(*[ui.tags.li(_fmt_change(p), class_="small") for p in changes_list], class_="mb-0"))
+                left_content.append(ui.div(*box_parts, class_="bg-light p-3 rounded mt-2"))
+
+        return ui.div(*left_content, class_="card border rounded mt-3 p-3")
 
     # --- Simulation card ---
     sim_result = reactive.value(None)
@@ -1156,7 +1277,8 @@ def server(input: Inputs, output: Outputs, session: Session):
         return ui.div(*parts, class_="small")
 
 
-app = App(app_ui, server)
+_logo_dir = Path(__file__).resolve().parent / "logo"
+app = App(app_ui, server, static_assets=_logo_dir)
 
 if __name__ == "__main__":
     from shiny import run_app
