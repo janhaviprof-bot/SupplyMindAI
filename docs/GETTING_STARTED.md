@@ -1,8 +1,8 @@
 # Getting Started — Your First 10 Minutes
 
-This guide walks you through setting up SupplyMind AI from scratch. If you follow the steps, you'll have the dashboard running in your browser in about 10 minutes.
+⚡ This guide walks you through setting up SupplyMind AI from scratch. If you follow the steps, you'll have the dashboard running in your browser in about 10 minutes.
 
-**Want to try the app first?** [Open the live deployment](https://019cc876-2199-a739-4a67-dc4bb96d2042.share.connect.posit.cloud/) (Posit Connect Cloud). No installation required.
+🚀 **Want to try the app first?** [Open the live deployment](https://019cc876-2199-a739-4a67-dc4bb96d2042.share.connect.posit.cloud/) (Posit Connect Cloud). No installation required.
 
 ---
 
@@ -95,7 +95,7 @@ Your browser should open automatically and show the SupplyMind AI dashboard.
 ### Step 5: What to expect
 
 - You should see the Supply Mind AI logo at the top.
-- Below it: a **Delivery Health** section with KPI cards (Total In Transit, On Time, Delayed, Critical).
+- Below it: a **Current Shipment Delivery Insight** section with KPI cards (Total In Transit, On Time, Delayed, Critical).
 - A **Prediction Map** and sections for **Supply Chain Optimization** and simulation.
 
 If you see all of that, you're good to go.
@@ -104,11 +104,11 @@ If you see all of that, you're good to go.
 
 ## Verifying It Works
 
-Quick checklist:
+✅ Quick checklist:
 
 - [ ] The dashboard loads in your browser.
 - [ ] You see the Supply Mind AI logo and tagline.
-- [ ] You see the Delivery Health section (may show "0" if there are no in-transit shipments in the database).
+- [ ] You see the Current Shipment Delivery Insight section (may show "0" if there are no in-transit shipments in the database).
 - [ ] No red error messages on the page.
 
 If any step fails, see [Troubleshooting](TROUBLESHOOTING.md).

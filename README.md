@@ -1,29 +1,32 @@
 # SupplyMind AI
 
-**SupplyMind AI** is a smart dashboard that watches your packages as they travel and tells you which ones might arrive late. It helps supply chain managers track shipments in real time, predict delivery delays, and find ways to improve their operations—all in one place.
+## Description
+
+📦 **SupplyMind AI** is a smart dashboard that watches your packages as they travel and tells you which ones might arrive late. It helps supply chain managers track shipments in real time, predict delivery delays, and find ways to improve their operations—all in one place.
 
 **Who is it for?** Supply chain managers who want to see delivery status at a glance and take action before problems grow.
 
-**[Try the live app](https://019cc876-2199-a739-4a67-dc4bb96d2042.share.connect.posit.cloud/)** — Deployed on Posit Connect Cloud.
+🚀 **[Try the live app](https://019cc876-2199-a739-4a67-dc4bb96d2042.share.connect.posit.cloud/)** — Deployed on Posit Connect Cloud.
 
 ---
 
-## Documentation
+## 📚 Documentation
 
 **[Documentation Index](docs/DOCUMENTATION_INDEX.md)** — One place to find everything.
 
 | Document | What you'll find |
 |----------|------------------|
-| [Getting Started](docs/GETTING_STARTED.md) | Your first 10 minutes: setup, install, and run |
-| [Glossary](docs/GLOSSARY.md) | Terms, concepts, and plain-language explanations |
-| [Troubleshooting](docs/TROUBLESHOOTING.md) | When something goes wrong |
-| [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | How it all fits together |
+| 📖 [Getting Started](docs/GETTING_STARTED.md) | Your first 10 minutes: setup, install, and run |
+| 📝 [Glossary](docs/GLOSSARY.md) | Terms, concepts, and plain-language explanations |
+| 🔧 [Troubleshooting](docs/TROUBLESHOOTING.md) | When something goes wrong |
+| 🏗️ [Architecture Overview](docs/ARCHITECTURE_OVERVIEW.md) | How it all fits together |
+| 🎨 [Icons Reference](docs/icons.md) | Unicode icons for READMEs and docs |
 
 The **User Guide** (card-by-card tour) is in this README below.
 
 ---
 
-## Project structure
+## 📁 Project Structure
 
 | Folder | Description |
 |--------|-------------|
@@ -35,28 +38,28 @@ See [docs/context.md](docs/context.md) for full project context, requirements, a
 
 ---
 
-## Quick start
+## ⚡ Quick Start
 
 1. Copy `.env.example` to `.env` and set:
    - `POSTGRES_CONNECTION_STRING` — from Supabase Dashboard → Project Settings → Database
    - `OPENAI_API_KEY` — your OpenAI API key
 
 2. Install dependencies:
-   ```
+   ```bash
    pip install -r SupplyMindAI/requirements.txt
    ```
 
 3. Run the Shiny app (opens in browser automatically):
-   ```
+   ```bash
    shiny run SupplyMindAI/app.py --launch-browser
    ```
    Or use the run script: `.\run.ps1`
 
-The app analyzes in-transit shipments on load and via the "Re-run Analysis" button, flagging them as On Time, Delayed, or Critical. The UI works on computers, tablets, and phones.
+The app analyzes in-transit shipments on load and via the "Re-run Analysis" button, flagging them as On Time, Delayed, or Critical. The UI works on computers, tablets, and phones. 📱💻
 
 ---
 
-# User Guide
+## User Guide
 
 This guide introduces the SupplyMind AI dashboard and explains how to use it. For each card, you'll learn what you see, what it means, how to use it, and—for those who want the details—what data it uses and how it works.
 
@@ -65,7 +68,7 @@ This guide introduces the SupplyMind AI dashboard and explains how to use it. Fo
 ## Table of Contents
 
 - [Introduction](#introduction)
-- [Card 1: Delivery Health](#card-1-delivery-health)
+- [Card 1: Current Shipment Delivery Insight](#card-1-current-shipment-delivery-insight)
 - [Card 2: Prediction Map](#card-2-prediction-map)
 - [Card 3: Supply Chain Optimization](#card-3-supply-chain-optimization)
 - [Card 4: Parameter Simulation + Simulation Result](#card-4-parameter-simulation--simulation-result)
@@ -90,18 +93,18 @@ SupplyMind AI is an end-to-end dashboard for supply chain managers. It helps you
 
 ```mermaid
 flowchart TD
-    subgraph step1 [Step 1: See what needs attention]
-        A1[Which shipments are late or at risk]
-        A2[Where problem hubs are on the map]
+    subgraph step1 [Step 1: Monitor]
+        A1[Late or at-risk shipments]
+        A2[Problem hubs on map]
     end
     
-    subgraph step2 [Step 2: Learn what to change]
-        B1[AI suggests improvements from past deliveries]
+    subgraph step2 [Step 2: Learn]
+        B1[AI suggests improvements]
     end
     
-    subgraph step3 [Step 3: Decide how much to invest]
-        C1[Use changes vs investment matrix to plot]
-        C2[From the plot find the best bang for your buck]
+    subgraph step3 [Step 3: Decide]
+        C1[Investment vs. change plot]
+        C2[Find best value]
     end
     
     Manager[You] --> step1
@@ -122,11 +125,11 @@ Each card section covers what you see, what it means, and how to use it. For rea
 
 ---
 
-## Card 1: Delivery Health
+## Card 1: Current Shipment Delivery Insight
 
 ### What you see
 
-A section titled "Delivery Health" with a **Re-run Analysis** button, several small cards showing numbers (Total In Transit, On Time, Delayed, Critical), and a donut chart in the center.
+A section titled "Current Shipment Delivery Insight" with a **Re-run Analysis** button, several small cards showing numbers (Total In Transit, On Time, Delayed, Critical), and a donut chart in the center.
 
 ### What it means
 
@@ -145,7 +148,7 @@ A section titled "Delivery Health" with a **Re-run Analysis** button, several sm
 
 ### Deep dive: What it does
 
-The Delivery Health card shows AI predictions for all in-transit shipments. It summarizes them as KPI counts (Total, On Time, Delayed, Critical) and a donut chart, and writes results into the `insights` table.
+The Current Shipment Delivery Insight card shows AI predictions for all in-transit shipments. It summarizes them as KPI counts (Total, On Time, Delayed, Critical) and a donut chart, and writes results into the `insights` table.
 
 ### Deep dive: Data used for analysis
 
@@ -258,21 +261,22 @@ The dashboard reads from `insights` to show the KPIs and donut chart.
 
 ## Card 2: Prediction Map
 
-**What you see:** A map of the United States with dots at hub locations. Dots can be gray, green, orange, or red. When you hover, you see the hub name and the count of flagged shipments.
+**What you see:** A map with summary on the left and map on the right. The summary explains hub colors and "What you can do" in numbered steps. Dots on the map represent hubs—black for all locations, red and orange for problem areas. Hover to see hub name and shipment counts.
 
 **What it means:**
-- **Gray dots:** All hubs (base layer).
-- **Green:** Hubs where shipments are on time.
-- **Orange:** Hubs with delayed shipments.
-- **Red:** Hubs with critical shipments (size may be larger for more critical shipments).
+- 🔴 **Red hubs:** High-priority shipments predicted to be delayed.
+- 🟠 **Orange hubs:** Shipments predicted to arrive late.
+- ⚫ **Black hubs:** All hub locations (base layer).
 
-**How to use it:** Hover over dots to see which hubs have issues. Use it to spot problem areas geographically.
+Dot size scales with the number of Critical/Delayed shipments at that hub.
 
-**Example:** Hover over a red dot in Chicago → tooltip shows "Chicago-Main, 3 flagged shipments."
+**How to use it:** Focus on red hubs first, then orange. Use the map to decide where to add capacity or adjust routing. Escalate critical shipments from the Needs Attention panel above. Hover for exact counts; drag to pan, scroll to zoom.
 
-**Note:** If you see "Run analysis to see hub map," run the analysis first (Re-run Analysis in Delivery Health).
+**Example:** Hover over a red dot in Chicago → tooltip shows the hub name and count of at-risk shipments.
 
-**Deep dive — What it does:** Plots hubs on a US map. Each hub gets a color based on the worst flag among shipments that visit it (Critical > Delayed > On Time). Red dot size can scale with the number of delayed/critical shipments at that hub.
+**Note:** If you see "Run analysis to see hub map," run the analysis first (Re-run Analysis in Current Shipment Delivery Insight).
+
+**Deep dive — What it does:** Plots hubs on a US map. Each hub gets a color based on the worst flag among shipments that visit it (Critical > Delayed > On Time). Dot size scales with the number of Critical/Delayed shipments at that hub.
 
 **Deep dive — Data:** Hubs from `hubs` (for coordinates) and flags from `insights` (per shipment). The app joins stops to shipments, then maps each hub to its worst flag.
 
@@ -353,13 +357,13 @@ The Parameter Simulation chips are parsed from these recommendations. When you s
 
 ### Parameter Simulation
 
-**What you see:** After you run Supply Chain Insights, a second column appears: **Parameters to simulate**. You see badge chips (e.g., "Hub Chicago: Increase capacity") and a dashed drop zone for "Selected parameters." A **Run simulation** button is at the bottom.
+**What you see:** After you run Supply Chain Insights, a second column appears: **Parameters to simulate** with a **?** button (top-right) that opens a collapsible "What each parameter does" panel. You see badge chips (e.g., "Hub Chicago: Increase capacity") and a drop zone for "Selected parameters." Each selected chip has a (×) to remove it; **Clear all** appears below. A **Run simulation** button is at the bottom.
 
 **What it means:** You can pick which suggested changes to simulate—like testing "what if we increased capacity at Chicago?" The simulation shows how many more shipments would be on time and at what cost.
 
 **How to use it:**
 1. Click a chip to add it to "Selected parameters," or drag it into the drop zone.
-2. Click the chip again or the (x) to remove it.
+2. Click the chip again or the (×) next to it to remove it; use **Clear all** to remove all selected parameters.
 3. Select one to five parameters.
 4. Click **Run simulation**.
 5. The Simulation Result card appears below.
@@ -368,11 +372,11 @@ The Parameter Simulation chips are parsed from these recommendations. When you s
 
 ### Simulation Result
 
-**What you see:** A card with a chart and a recommendations panel. The chart has Investment ($) on the horizontal axis and On-time count on the vertical axis. Each selected parameter gets a colored line. Gold stars mark the "sweet spot"—the best value for each. The recommendations panel shows AI-generated advice with investment, recovered shipments, and ROI.
+**What you see:** A card with a chart and a recommendations panel. Above the chart, a legend explains: ★ **Best investment point (sweet spot):** where you get the most on-time improvement per dollar. The chart has Investment ($) on the horizontal axis and **On-time shipments** on the vertical axis. Each selected parameter gets a colored line. Gold stars mark the sweet spot for each. The recommendations panel shows AI-generated advice with investment, recovered shipments, and ROI.
 
 **What it means:**
 - **Chart:** Shows how many shipments become on time as you invest more in each change.
-- **Sweet spot (gold star):** The recommended point—good results without overspending.
+- **★ Best investment point (sweet spot):** The recommended point—good results without overspending.
 - **Recommendations:** The AI picks the best options and explains why.
 
 **How to use it:** Use the recommendations to decide which changes to implement. The caveat at the bottom reminds you that results are based on simulation, not live data.
@@ -477,7 +481,7 @@ Recommendations are based on investment ($), recovered count, and ROI.
 
 | Action | Where |
 |--------|-------|
-| Refresh predictions | Re-run Analysis (Delivery Health) |
+| Refresh predictions | Re-run Analysis (Current Shipment Delivery Insight) |
 | See full details for a shipment | Click shipment ID (Needs Attention) |
 | Add shipment to your list | Escalate (Needs Attention) |
 | Open your escalated list | View Escalated |
@@ -488,6 +492,6 @@ Recommendations are based on investment ($), recovered count, and ROI.
 
 ## Support
 
-- **Something not working?** See [Troubleshooting](docs/TROUBLESHOOTING.md).
-- **Need a term explained?** See the [Glossary](docs/GLOSSARY.md).
-- **Want to run the app locally?** See [Getting Started](docs/GETTING_STARTED.md).
+- 🔧 **Something not working?** See [Troubleshooting](docs/TROUBLESHOOTING.md).
+- 📝 **Need a term explained?** See the [Glossary](docs/GLOSSARY.md).
+- ⚡ **Want to run the app locally?** See [Getting Started](docs/GETTING_STARTED.md).
