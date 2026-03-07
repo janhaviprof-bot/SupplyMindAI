@@ -93,18 +93,18 @@ SupplyMind AI is an end-to-end dashboard for supply chain managers. It helps you
 
 ```mermaid
 flowchart TD
-    subgraph step1 [Step 1: See what needs attention]
-        A1[Which shipments are late or at risk]
-        A2[Where problem hubs are on the map]
+    subgraph step1 [Step 1: Monitor]
+        A1[Late or at-risk shipments]
+        A2[Problem hubs on map]
     end
     
-    subgraph step2 [Step 2: Learn what to change]
-        B1[AI suggests improvements from past deliveries]
+    subgraph step2 [Step 2: Learn]
+        B1[AI suggests improvements]
     end
     
-    subgraph step3 [Step 3: Decide how much to invest]
-        C1[Use changes vs investment matrix to plot]
-        C2[From the plot find the best bang for your buck]
+    subgraph step3 [Step 3: Decide]
+        C1[Investment vs. change plot]
+        C2[Find best value]
     end
     
     Manager[You] --> step1
