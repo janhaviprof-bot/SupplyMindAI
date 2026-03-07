@@ -29,4 +29,4 @@ See [docs/context.md](docs/context.md) for full project context, requirements, a
    ```
    Or use the run script: `.\run.ps1`
 
-The app analyzes in-transit shipments on load and via the "Re-run Analysis" button, flagging them as On Time, Delayed, or Critical, and writing results to the `insights` table.
+The app analyzes in-transit shipments on load and via the "Re-run Analysis" button, flagging them as On Time, Delayed, or Critical, and writing results to the `insights` table. The UI is responsive and works on smaller screens (tablets and phones).

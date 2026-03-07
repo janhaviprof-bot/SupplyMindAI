@@ -197,8 +197,9 @@ _PALETTE = {
 }
 
 app_ui = ui.page_fluid(
+    ui.tags.meta(name="viewport", content="width=device-width, initial-scale=1"),
     ui.tags.link(
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap",
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=DM+Sans:wght@500;600&display=swap",
         rel="stylesheet",
     ),
     ui.tags.style(
@@ -267,7 +268,8 @@ app_ui = ui.page_fluid(
         .card-secondary {{ background: {_PALETTE["card_secondary"]} !important; }}
         .rec-panel-header {{ font-weight: 600; font-size: 1rem; margin-bottom: 10px;
           border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }}
-        .card-title-divider {{ border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 10px; }}
+        .card-title-divider {{ border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 10px; font-family: "DM Sans", "Inter", sans-serif !important; font-weight: 600; letter-spacing: -0.01em; }}
+        .supplychain-header-font {{ font-family: "DM Sans", "Inter", sans-serif !important; }}
         .rec-master {{ background: #f8fafc; border-left: 4px solid #2563eb; border-radius: 10px;
           padding: 14px; margin-bottom: 12px; }}
         .rec-alt {{ background: white; border-left: 4px solid #e5e7eb; border-radius: 10px;
@@ -284,6 +286,41 @@ app_ui = ui.page_fluid(
         .rec-metric-chip-roi-high {{ background: rgba(22,163,74,0.12); color: #16a34a; }}
         .rec-metric-chip-roi-medium {{ background: rgba(217,119,6,0.12); color: #d97706; }}
         .rec-metric-chip-roi-low {{ background: rgba(220,38,38,0.12); color: #dc2626; }}
+        .typewriter-cursor {{ animation: typewriter-blink 1s step-end infinite; margin-left: 2px; }}
+        @keyframes typewriter-blink {{ 50% {{ opacity: 0; }} }}
+        """
+    ),
+    ui.tags.script(
+        """
+        (function() {
+          function runTypewriter() {
+            var el = document.querySelector('.typewriter-container');
+            if (!el) return;
+            var textEl = document.getElementById('typewriter-text');
+            var cursorEl = document.getElementById('typewriter-cursor');
+            var text = el.getAttribute('data-subtitle') || '';
+            if (!text || !textEl) return;
+            textEl.textContent = '';
+            var i = 0;
+            var speed = 28;
+            function type() {
+              if (i < text.length) {
+                textEl.textContent += text.charAt(i);
+                i++;
+                setTimeout(type, speed);
+              } else if (cursorEl) {
+                cursorEl.style.animation = 'none';
+                cursorEl.style.display = 'none';
+              }
+            }
+            setTimeout(type, 400);
+          }
+          if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', runTypewriter);
+          } else {
+            runTypewriter();
+          }
+        })();
         """
     ),
     ui.tags.header(
@@ -294,23 +331,25 @@ app_ui = ui.page_fluid(
                     alt="SupplyMind",
                     style="width: 100%; height: 100%; object-fit: contain; display: block;",
                 ),
-                class_="d-flex align-items-center justify-content-center",
+                class_="d-flex align-items-center justify-content-center app-header-logo",
                 style="flex-shrink: 0; margin-right: 16px; width: 80px; height: 80px; background: white; border-radius: 10px; padding: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);",
             ),
             ui.div(
-                ui.span("Supply Mind AI", class_="d-block", style="font-size: 2.75rem; font-weight: 600; letter-spacing: -0.02em; color: #111827; line-height: 1.2;"),
-                ui.p(
-                    "AI-powered shipment intelligence. Track in-transit deliveries, predict delays, and optimize your supply chain in one dashboard.",
-                    class_="mb-0",
-                    style="font-size: 0.9rem; line-height: 1.35; color: #6b7280; margin-top: 4px;",
+                ui.span("Supply Mind AI", class_="d-block supplychain-header-font", style="font-size: 2.35rem; font-weight: 500; letter-spacing: -0.02em; color: #111827; line-height: 1.2;"),
+                ui.div(
+                    ui.span(id="typewriter-text"),
+                    ui.span("|", id="typewriter-cursor", class_="typewriter-cursor"),
+                    class_="mb-0 typewriter-container",
+                    style="font-size: 0.9rem; line-height: 1.35; color: #6b7280; margin-top: 4px; min-height: 2.7em;",
+                    **{"data-subtitle": "AI-powered shipment intelligence. Track in-transit deliveries, predict delays, and optimize your supply chain in one dashboard."},
                 ),
                 class_="flex-grow-1 d-flex flex-column justify-content-center",
                 style="min-width: 0; height: 80px;",
             ),
-            class_="d-flex align-items-center",
+            class_="d-flex align-items-center app-header",
             style="padding: 22px 24px; justify-content: flex-start; align-items: center; border-radius: 14px; border: 1px solid #e5e7eb; box-shadow: 0 6px 16px rgba(0,0,0,0.05);",
         ),
-        class_="py-0",
+        class_="py-0 app-header-outer",
         style="background: linear-gradient(135deg, #eef2ff 0%, #f8fafc 50%, #ecfeff 100%); border-bottom: 3px solid #2563eb;",
     ),
     ui.output_ui("status"),
@@ -359,8 +398,39 @@ app_ui = ui.page_fluid(
                 "Get AI-powered recommendations to improve your supply chain based on delivered shipment data."
             ),
             ui.div(
-            # LHS column (with vertical divider)
+            # LHS column (with vertical divider) - date selector is static so it doesn't reset on re-render
             ui.div(
+                    ui.div(
+                        ui.div(
+                            ui.div(
+                                ui.input_select(
+                                    "opt_date_range",
+                                    "Date range",
+                                    choices={
+                                        "yesterday": "Yesterday",
+                                        "week": "Past week",
+                                        "month": "Past month",
+                                        "year": "Past year",
+                                        "custom": "Custom",
+                                    },
+                                    selected="year",
+                                ),
+                                class_="opt-date-select-wrapper",
+                            ),
+                        ui.panel_conditional(
+                            "input.opt_date_range === 'custom'",
+                            ui.input_date_range(
+                                "opt_custom_dates",
+                                "Custom date range",
+                                start=_default_start,
+                                end=_default_end,
+                            ),
+                        ),
+                        class_="flex-grow-1",
+                    ),
+                    ui.input_action_button("opt_get_insights", "Get Supply Chain Insights", class_="btn btn-outline-secondary btn-sm"),
+                    class_="d-flex align-items-center justify-content-between gap-2 mb-3",
+                ),
                 ui.output_ui("opt_status"),
                 ui.output_ui("opt_results"),
                 class_="col-lg-6 border-end pe-4 d-flex flex-column",
@@ -372,10 +442,19 @@ app_ui = ui.page_fluid(
                     ui.panel_conditional(
                         "input.opt_insights_ready === 'yes'",
                         ui.div(
-                        ui.h5("Parameter Simulation", class_="h6 card-title-divider mb-0"),
-                        ui.h6("Parameters to simulate", class_="mt-2 mb-1"),
+                        ui.div(
+                            ui.span("Parameter Simulation", class_="h5 card-title-divider mb-0"),
+                            ui.input_action_link(
+                                "sim_algo_info",
+                                "?",
+                                class_="btn btn-link text-decoration-none rounded-circle p-0 sim-info-trigger sim-info-top-right",
+                                style="font-size: 0.6rem; font-weight: 600; line-height: 1; width: 1.5em; height: 1.5em; min-width: 1.5em; border: 1px solid #9ca3af; color: #6b7280; padding: 0 !important; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s, color 0.2s, border-color 0.2s; flex-shrink: 0;",
+                            ),
+                            class_="sim-card-header d-flex justify-content-between align-items-start",
+                        ),
+                        ui.div("Parameters to simulate", class_="sim-section-label mt-2 mb-1"),
                         ui.div(ui.output_ui("sim_param_chips"), id="sim-params-source", class_="sim-draggable-source mb-2"),
-                        ui.h6("Selected parameters", class_="mt-2 mb-1"),
+                        ui.div("Selected parameters", class_="sim-section-label mt-2 mb-1"),
                         ui.div(
                             ui.span("Click a parameter above to select", class_="text-muted"),
                             id="sim-selected-zone",
@@ -479,10 +558,45 @@ app_ui = ui.page_fluid(
             .sim-drop-zone.sim-drag-over {{ background: rgba(37, 99, 235, 0.08) !important; border-color: {_PALETTE["primary"]} !important; }}
             .sim-draggable-param {{ cursor: pointer; user-select: none; }}
             .sim-draggable-param:active {{ cursor: grabbing; }}
+            .sim-section-label {{ font-size: 0.95rem; font-weight: 500; color: #4b5563; }}
+            .sim-card-header {{ position: relative; }}
+            .sim-info-top-right {{ margin-top: -2px; margin-right: -4px; }}
+            .sim-info-trigger {{ cursor: pointer; }}
+            .sim-info-trigger:hover {{ background: rgba(37, 99, 235, 0.15) !important; color: {_PALETTE["primary"]} !important; border-color: {_PALETTE["primary"]} !important; }}
             .sim-chart-wrap {{ width: 100%; max-width: 100%; min-width: 300px; min-height: 380px; }}
             .sim-results-row {{ display: flex; align-items: stretch; flex-wrap: nowrap; gap: 16px; }}
             .sim-results-row > .sim-results-chart {{ flex: 2 1 0%; min-width: 0; }}
             .sim-results-row > .sim-results-rec {{ flex: 1 1 0%; min-width: 0; min-height: 380px; border-radius: 12px; border: 1px solid {_PALETTE["border"]}; }}
+            .opt-date-select-wrapper select {{ border-color: {_PALETTE["primary"]} !important; border-width: 1px; border-radius: 6px; }}
+            .opt-date-select-wrapper select:focus {{ border-color: {_PALETTE["primary"]} !important; box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.15); }}
+            .param-list {{ display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }}
+            .param-row {{ display: flex; flex-direction: column; gap: 1px; padding: 5px 10px; border-radius: 6px; background: #fafbfc; border: 1px solid {_PALETTE["primary"]}; }}
+            .param-label {{ font-size: 0.72rem; font-weight: 600; color: #374151; letter-spacing: 0.02em; }}
+            .param-desc {{ font-size: 0.78rem; color: #4b5563; line-height: 1.3; }}
+            .param-accordion .accordion-button {{ font-size: 0.8rem !important; font-weight: 500 !important; padding: 6px 12px !important; }}
+            @media (max-width: 991px) {{
+              .sim-results-row {{ flex-wrap: wrap; }}
+              .sim-results-row > .sim-results-chart {{ flex: 1 1 100%; min-width: 100%; }}
+              .sim-results-row > .sim-results-rec {{ flex: 1 1 100%; min-width: 100%; min-height: 320px; }}
+              .col-lg-6.border-end {{ border-right: none !important; border-bottom: 1px solid #e5e7eb !important; padding-bottom: 1rem !important; }}
+              .col-lg-6.ps-4 {{ padding-left: 0 !important; padding-top: 1rem !important; }}
+            }}
+            @media (max-width: 767px) {{
+              .container-fluid {{ padding: 0 12px 16px; max-width: 100%; }}
+              .section-container {{ padding: 14px; margin-bottom: 12px; }}
+              .card {{ padding: 14px; }}
+              .app-header {{ flex-direction: column; align-items: flex-start !important; padding: 16px !important; gap: 12px; }}
+              .app-header-logo {{ width: 56px !important; height: 56px !important; margin-right: 0 !important; }}
+              .app-header .supplychain-header-font {{ font-size: 1.75rem !important; }}
+              .typewriter-container {{ font-size: 0.82rem !important; min-height: 2.4em !important; }}
+              .param-list {{ grid-template-columns: 1fr; }}
+              .sim-chip {{ font-size: 0.75rem; padding: 5px 10px; }}
+              .kpi-card {{ min-width: 70px; padding: 10px 12px; }}
+              .kpi-value {{ font-size: 1.25rem; }}
+              h5 {{ font-size: 1.15rem !important; }}
+              .d-flex.gap-0 {{ flex-direction: column !important; }}
+              .delivery-health-split > div:last-child {{ border-left: none !important; border-top: 1px solid #e5e7eb !important; }}
+            }}
             """
         ),
         class_="section-container",
@@ -669,6 +783,77 @@ def server(input: Inputs, output: Outputs, session: Session):
         ui.modal_remove()
 
     @reactive.effect
+    @reactive.event(input.sim_algo_info)
+    def show_sim_algo_modal():
+        m = ui.modal(
+            ui.div(
+                ui.p(ui.strong("Just 2 steps:"), class_="mb-1", style="font-size: 0.9rem;"),
+                ui.tags.ol(
+                    ui.tags.li("Pick parameters from the suggestions to the left.", style="font-size: 0.9rem;"),
+                    ui.tags.li("Click Run simulation.", style="font-size: 0.9rem;"),
+                    class_="mb-2",
+                    style="font-size: 0.9rem;",
+                ),
+                ui.p(
+                    "We use a delay-decomposition model to estimate how each change would improve on-time delivery and show the best investment vs. result.",
+                    class_="text-muted mb-3",
+                    style="font-size: 0.9rem;",
+                ),
+                ui.accordion(
+                    ui.accordion_panel(
+                        ui.span("What each parameter does", style="font-size: 0.8rem; font-weight: 500;"),
+                        ui.div(
+                            ui.div(
+                                ui.span("Hub capacity", class_="param-label"),
+                                ui.span("Add more space so shipments don't get backed up.", class_="param-desc"),
+                                class_="param-row",
+                            ),
+                            ui.div(
+                                ui.span("Dispatch time", class_="param-label"),
+                                ui.span("Speed up how long shipments wait at each stop.", class_="param-desc"),
+                                class_="param-row",
+                            ),
+                            ui.div(
+                                ui.span("Transit mode", class_="param-label"),
+                                ui.span("Use faster shipping (e.g., air vs truck).", class_="param-desc"),
+                                class_="param-row",
+                            ),
+                            ui.div(
+                                ui.span("Earlier dispatch", class_="param-label"),
+                                ui.span("Send shipments out earlier.", class_="param-desc"),
+                                class_="param-row",
+                            ),
+                            ui.div(
+                                ui.span("Risk-based buffer", class_="param-label"),
+                                ui.span("Plan for predicted delays (weather, traffic).", class_="param-desc"),
+                                class_="param-row",
+                            ),
+                            class_="param-list",
+                        ),
+                        value="params",
+                    ),
+                    open=False,
+                    class_="mt-2 param-accordion",
+                ),
+                class_="text-start",
+                style="font-size: 0.9rem;",
+            ),
+            title="Parameter Simulation",
+            easy_close=True,
+            footer=ui.div(
+                ui.input_action_button("close_sim_algo_modal", "Close", class_="btn btn-secondary"),
+                class_="d-flex justify-content-end",
+            ),
+            size="l",
+        )
+        ui.modal_show(m)
+
+    @reactive.effect
+    @reactive.event(input.close_sim_algo_modal)
+    def on_close_sim_algo_modal():
+        ui.modal_remove()
+
+    @reactive.effect
     @reactive.event(input.escalate_which)
     def on_escalate_add():
         sid = input.escalate_which()
@@ -851,7 +1036,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                     class_="p-3 d-flex flex-column",
                     style=f"flex: 1; min-width: 0; border-left: 1px solid {_PALETTE['border']};",
                 ),
-                class_="d-flex gap-0",
+                class_="d-flex gap-0 delivery-health-split",
                 style="width: 100%;",
             ),
             class_="card card-accent-primary",
@@ -1035,37 +1220,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         result = opt_result()
         err = result.get("error") if result else None
 
-        # Top of left card: date range + button (Feature 1 style)
-        header_row = ui.div(
-            ui.div(
-                ui.input_select(
-                    "opt_date_range",
-                    "Date range",
-                    choices={
-                        "yesterday": "Yesterday",
-                        "week": "Past week",
-                        "month": "Past month",
-                        "year": "Past year",
-                        "custom": "Custom",
-                    },
-                    selected="year",
-                ),
-                ui.panel_conditional(
-                    "input.opt_date_range === 'custom'",
-                    ui.input_date_range(
-                        "opt_custom_dates",
-                        "Custom date range",
-                        start=_default_start,
-                        end=_default_end,
-                    ),
-                ),
-                class_="flex-grow-1",
-            ),
-            ui.input_action_button("opt_get_insights", "Get Supply Chain Insights", class_="btn btn-outline-secondary btn-sm"),
-            class_="d-flex align-items-center justify-content-between gap-2 mb-3",
-        )
-
-        left_content = [header_row]
+        left_content = []
         if err:
             left_content.append(ui.div(ui.p("Error:", class_="fw-bold"), ui.p(err, class_="text-danger"), class_="alert alert-danger small"))
         elif result is None:
