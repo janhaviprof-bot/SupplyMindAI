@@ -93,6 +93,7 @@ A global logistics company is struggling to track shipments in real time, predic
 | flag_status | String | - | "On Time", "Delayed", "Escalated", "Critical" |
 | predicted_arrival | Timestamp | - | AI-estimated arrival |
 | reasoning | Text | - | e.g., "Storm at Stop 3 + Hub Congestion." |
+| confidence | Integer | - | AI confidence 1–10 (data-based heuristic when model omits) |
 
 ---
 
