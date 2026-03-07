@@ -381,6 +381,85 @@ Rules:
     }
 
 
+def call_openai_sim_insights(graph_data: dict) -> dict:
+    """
+    Call OpenAI to generate recommendation insights from simulation graph data.
+    graph_data: {curves, baseline_on_time, baseline_delayed, simulatable_params, simulated_params}
+    Returns: {recommendation_1, recommendation_2, recommendation_3, alternative_params_message}
+    """
+    client = _get_openai_client()
+    curves = graph_data.get("curves", [])
+    baseline_ot = graph_data.get("baseline_on_time", 0)
+    baseline_dly = graph_data.get("baseline_delayed", 0)
+    simulatable = graph_data.get("simulatable_params", [])
+    simulated = graph_data.get("simulated_params", [])
+
+    # Build JSON-serializable summary for each curve
+    curve_summaries = []
+    for c in curves:
+        label = c.get("label", "")
+        best = c.get("best_metrics", {})
+        pts = c.get("chart_points_3", [])
+        curve_pts = c.get("curve", [])
+        inv_min = pts[0][0] if len(pts) >= 1 else 0
+        inv_sweet = pts[1][0] if len(pts) >= 2 else 0
+        inv_max = pts[2][0] if len(pts) >= 3 else 0
+        on_min = pts[0][1] if len(pts) >= 1 else baseline_ot
+        on_sweet = pts[1][1] if len(pts) >= 2 else baseline_ot
+        on_max = pts[2][1] if len(pts) >= 3 else baseline_ot
+        recovered = best.get("on_time_count", baseline_ot) - baseline_ot
+        curve_summaries.append({
+            "label": label,
+            "investment_range_usd": [inv_min, inv_sweet, inv_max],
+            "on_time_at_points": [on_min, on_sweet, on_max],
+            "recovered_shipments": recovered,
+            "sweet_spot_investment_usd": inv_sweet,
+            "curve_points": [(round(p[1], 0), p[2]) for p in curve_pts] if curve_pts else [],
+        })
+
+    prompt = f"""You are a supply chain optimization expert. Analyze this simulation graph data.
+
+**Context:** Investment ($) vs On-time shipment count for different parameters. Higher on-time is better.
+
+**Baseline:** {baseline_ot} on-time, {baseline_dly} delayed shipments (before any changes).
+
+**Per-parameter results (from graph):**
+{json.dumps(curve_summaries, indent=2)}
+
+**Simulated parameters (shown in graph):** {json.dumps(simulated)}
+**All parameters the user can simulate:** {json.dumps(simulatable)}
+
+Return ONLY valid JSON with no markdown or extra text:
+{{
+  "recommendation_1": "Primary actionable insight based on the best-performing curve. Be specific: which parameter, how much to invest, expected improvement.",
+  "recommendation_2": "Second insight from next-best curve, or null if only 1 meaningful result.",
+  "recommendation_3": "Third insight, or null if fewer than 3 meaningful results.",
+  "alternative_params_message": "When some parameters showed limited/no improvement: suggest 2-3 parameters from 'All parameters the user can simulate' that were NOT simulated, for the user to try instead. E.g. 'These parameters showed limited impact. Try instead: [param1], [param2].' If all simulated params were impactful, use empty string."
+}}
+
+Rules:
+- Rank recommendations by impact (recovered shipments, ROI).
+- recommendation_1 must never be null when there is at least one curve.
+- Use null for recommendation_2 and recommendation_3 when graph data does not support them.
+- alternative_params_message: only suggest params from simulatable that are NOT in simulated."""
+
+    response = client.chat.completions.create(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.3,
+    )
+    text = response.choices[0].message.content.strip()
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1].rsplit("```", 1)[0]
+    data = json.loads(text)
+    return {
+        "recommendation_1": data.get("recommendation_1") or "",
+        "recommendation_2": data.get("recommendation_2"),
+        "recommendation_3": data.get("recommendation_3"),
+        "alternative_params_message": data.get("alternative_params_message") or "",
+    }
+
+
 def run_optimization_insights(
     date_range: str, start_date=None, end_date=None, include_raw_data: bool = False
 ) -> dict:

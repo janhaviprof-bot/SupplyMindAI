@@ -24,6 +24,7 @@ from analysis.optimization_pipeline import (
     run_optimization_insights,
     run_optimization_insights_with_data,
     parse_recommendation_to_sim_param,
+    call_openai_sim_insights,
 )
 from analysis.simulation import find_sweet_spot, lever_value_to_usd
 # -----------------------------------------------------------------------------
@@ -855,6 +856,39 @@ def server(input: Inputs, output: Outputs, session: Session):
     # --- Simulation card ---
     sim_result = reactive.value(None)
     sim_loading = reactive.value(False)
+    sim_ai_insights = reactive.value(None)
+
+    def _fallback_recommendation(res: dict):
+        """Fallback when AI insights unavailable."""
+        curves = res.get("curves", [])
+        base_ot = res.get("baseline_on_time", 0)
+        parts = []
+        for c in curves:
+            label = c.get("label", "")
+            best = c.get("best_metrics", {})
+            pts = c.get("chart_points_3", [])
+            inv_sweet = pts[1][0] if len(pts) >= 2 else 0
+            sim_ot = best.get("on_time_count", base_ot)
+            recovered = sim_ot - base_ot
+            if recovered > 0:
+                parts.append(
+                    ui.p(
+                        ui.strong(label + ": "),
+                        f"Invest ${inv_sweet:,.0f} to recover ~{recovered} shipment(s). ROI favorable.",
+                        class_="mb-2 small",
+                    )
+                )
+            else:
+                parts.append(
+                    ui.p(
+                        ui.strong(label + ": "),
+                        "Limited impact. Consider alternative levers.",
+                        class_="mb-2 small text-muted",
+                    )
+                )
+        if not parts:
+            return ui.p("Review chart to compare options.", class_="text-muted small")
+        return ui.div(*parts, class_="small")
 
     def _sim_selected() -> list:
         """Returns selected param labels (up to 5)."""
@@ -909,6 +943,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         delayed = r.get("delayed_raw", []) if r else []
         if not r or (not on_time and not delayed):
             sim_result.set({"error": "No raw data. Run Supply Chain Insights first."})
+            sim_ai_insights.set(None)
             return
         control = r.get("control_parameters", []) or []
         top = [tp.get("label", "") for tp in (r.get("top_parameters") or []) if tp.get("label")]
@@ -917,7 +952,9 @@ def server(input: Inputs, output: Outputs, session: Session):
         params_to_run = sel if sel else simulatable
         if not params_to_run:
             sim_result.set({"error": "No simulatable parameters."})
+            sim_ai_insights.set(None)
             return
+        sim_ai_insights.set(None)
         ranges = {
             "hub_capacity": (1.0, 2.0),
             "dispatch_time_at_hub": (0, 1),
@@ -954,8 +991,22 @@ def server(input: Inputs, output: Outputs, session: Session):
                 "baseline_on_time": len(on_time),
                 "baseline_delayed": len(delayed),
             })
+            # Generate AI insights from graph data
+            try:
+                graph_data = {
+                    "curves": curves,
+                    "baseline_on_time": len(on_time),
+                    "baseline_delayed": len(delayed),
+                    "simulatable_params": simulatable,
+                    "simulated_params": [c["label"] for c in curves],
+                }
+                insights = call_openai_sim_insights(graph_data)
+                sim_ai_insights.set(insights)
+            except Exception as ai_err:
+                sim_ai_insights.set({"error": str(ai_err)})
         except Exception as e:
             sim_result.set({"error": str(e)})
+            sim_ai_insights.set(None)
         finally:
             sim_loading.set(False)
 
@@ -1077,36 +1128,31 @@ def server(input: Inputs, output: Outputs, session: Session):
         res = sim_result()
         if not res or res.get("error") or not res.get("curves"):
             return ui.span("Run simulation for recommendations.", class_="text-muted")
-        curves = res.get("curves", [])
-        base_ot = res.get("baseline_on_time", 0)
-        base_dly = res.get("baseline_delayed", 0)
+        insights = sim_ai_insights()
+        # Show loading while AI generates
+        if insights is None and sim_loading():
+            return ui.p("Generating insights...", class_="text-muted small")
+        if insights is None:
+            return ui.p("Generating insights...", class_="text-muted small")
+        # AI error fallback
+        if isinstance(insights, dict) and insights.get("error"):
+            return _fallback_recommendation(res)
+        # Render AI-generated insights
         parts = []
-        for c in curves:
-            label = c.get("label", "")
-            best = c.get("best_metrics", {})
-            sweet = c.get("sweet_spot_value")
-            pts = c.get("chart_points_3", [])
-            inv_sweet = pts[1][0] if len(pts) >= 2 else 0
-            sim_ot = best.get("on_time_count", base_ot)
-            recovered = sim_ot - base_ot
-            if recovered > 0:
-                parts.append(
-                    ui.p(
-                        ui.strong(label + ": "),
-                        f"Invest ${inv_sweet:,.0f} to recover ~{recovered} shipment(s). ROI favorable.",
-                        class_="mb-2 small",
-                    )
-                )
-            else:
-                parts.append(
-                    ui.p(
-                        ui.strong(label + ": "),
-                        "Limited impact. Consider alternative levers such as earlier dispatch or risk-based buffer.",
-                        class_="mb-2 small text-muted",
-                    )
-                )
+        r1 = insights.get("recommendation_1", "").strip()
+        if r1:
+            parts.append(ui.p(ui.strong("1. "), r1, class_="mb-2 small"))
+        r2 = insights.get("recommendation_2")
+        if r2 and str(r2).strip():
+            parts.append(ui.p(ui.strong("2. "), str(r2).strip(), class_="mb-2 small"))
+        r3 = insights.get("recommendation_3")
+        if r3 and str(r3).strip():
+            parts.append(ui.p(ui.strong("3. "), str(r3).strip(), class_="mb-2 small"))
+        alt = insights.get("alternative_params_message", "").strip()
+        if alt:
+            parts.append(ui.p(alt, class_="mb-0 small text-muted"))
         if not parts:
-            return ui.p("Review chart to compare options.", class_="text-muted small")
+            return _fallback_recommendation(res)
         return ui.div(*parts, class_="small")
 
 
