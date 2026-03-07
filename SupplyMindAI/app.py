@@ -214,13 +214,13 @@ app_ui = ui.page_fluid(
                     style="width: 100%; height: 100%; object-fit: contain; display: block;",
                 ),
                 class_="d-flex align-items-center justify-content-center",
-                style="flex-shrink: 0; margin-right: 1rem; width: 128px; height: 128px;",
+                style="flex-shrink: 0; margin-right: 0.5rem; width: 128px; height: 128px;",
             ),
             ui.div(
-                ui.span("Supply Mind AI", class_="fw-bold d-block", style=f"font-size: 1.25rem; letter-spacing: -0.02em; color: {_PALETTE['dark_blue']}; line-height: 1.3;"),
+                ui.span("Supply Mind AI", class_="fw-bold d-block", style=f"font-size: 3.5rem; letter-spacing: -0.02em; color: {_PALETTE['dark_blue']}; line-height: 1.1;"),
                 ui.p(
                     "AI-powered shipment intelligence. Track in-transit deliveries, predict delays, and optimize your supply chain in one dashboard.",
-                    class_="mb-0 mt-0.5",
+                    class_="mb-0 mt-2",
                     style=f"font-size: 0.8rem; line-height: 1.35; color: {_PALETTE['gray']};",
                 ),
                 class_="flex-grow-1 d-flex flex-column justify-content-center",
