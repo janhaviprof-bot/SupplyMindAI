@@ -97,6 +97,6 @@ Common issues and how to fix them.
 
 ## Still stuck?
 
-- Check the [User Guide](USER_GUIDE.md) for how each section works.
+- Check the [User Guide](../README.md#user-guide) for how each section works.
 - Check the [Glossary](GLOSSARY.md) for term definitions.
 - See [context.md](context.md) and [predictions.md](predictions.md) for technical details on the database and analysis.

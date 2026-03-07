@@ -117,6 +117,6 @@ If any step fails, see [Troubleshooting](TROUBLESHOOTING.md).
 
 ## Next Steps
 
-- **Learn the dashboard:** [User Guide](USER_GUIDE.md)
-- **Understand how each part works:** [User Guide](USER_GUIDE.md)
+- **Learn the dashboard:** [User Guide](../README.md#user-guide) (in README)
+- **Understand how each part works:** [User Guide](../README.md#user-guide) (in README)
 - **Brush up on terms:** [Glossary](GLOSSARY.md)

@@ -11,7 +11,7 @@ Use this page as your starting point. It explains where each topic lives and whe
 | I want to… | Go to |
 |------------|-------|
 | Set up and run the app for the first time | [Getting Started](GETTING_STARTED.md) |
-| Learn how to use the dashboard, card by card (what you see, how to use it, data, flags, levers, algorithms) | [User Guide](USER_GUIDE.md) |
+| Learn how to use the dashboard, card by card (what you see, how to use it, data, flags, levers, algorithms) | [User Guide (in README)](../README.md#user-guide) |
 | Learn what terms like "hub," "critical," or "lever" mean, or look up a word | [Glossary](GLOSSARY.md) |
 | Fix an error or solve a problem | [Troubleshooting](TROUBLESHOOTING.md) |
 | See how the app fits together (high level) | [Architecture Overview](ARCHITECTURE_OVERVIEW.md) |
@@ -33,7 +33,7 @@ Use this page as your starting point. It explains where each topic lives and whe
 
 | Document | What you'll find |
 |----------|------------------|
-| [USER_GUIDE.md](USER_GUIDE.md) | Card-by-card tour: what you see, what it means, how to use it; plus deep dive per card (data sources, dataset headers, flags, AI parameters, levers, algorithms, sweet spot, recommendations) |
+| User Guide (in [README](../README.md#user-guide)) | Card-by-card tour: what you see, what it means, how to use it; plus deep dive per card (data sources, dataset headers, flags, AI parameters, levers, algorithms, sweet spot, recommendations) |
 
 ### Understanding concepts
 
@@ -61,7 +61,7 @@ Use this page as your starting point. It explains where each topic lives and whe
 ## Suggested reading order
 
 1. **First time?** → [Getting Started](GETTING_STARTED.md)
-2. **App is running?** → [User Guide](USER_GUIDE.md)
-3. **Want to go deeper?** → [User Guide](USER_GUIDE.md) (deep-dive sections) and [Glossary](GLOSSARY.md)
+2. **App is running?** → [User Guide](../README.md#user-guide) (in README)
+3. **Want to go deeper?** → [User Guide](../README.md#user-guide) (deep-dive sections) and [Glossary](GLOSSARY.md)
 4. **Something broken?** → [Troubleshooting](TROUBLESHOOTING.md)
 5. **Need a term?** → [Glossary](GLOSSARY.md)
