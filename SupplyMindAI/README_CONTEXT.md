@@ -48,6 +48,7 @@ A global logistics company is struggling to track shipments in real time, predic
 | total_stops | Integer | - | Total hubs in journey (Max 5) |
 | current_stop_index | Integer | - | Which stop now (1-5) |
 | final_deadline | Timestamp | - | Drop-dead delivery time |
+| status | String | - | "In Transit" or "Delivered" |
 
 ### stops
 

@@ -3,6 +3,8 @@ Shipment analysis pipeline.
 Fetches in-transit shipments, enriches with stops/hubs/risks,
 flags via OpenAI (On Time / Delayed / Critical), and writes to insights.
 """
+from __future__ import annotations
+
 import json
 import os
 from datetime import datetime
