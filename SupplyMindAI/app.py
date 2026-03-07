@@ -342,9 +342,9 @@ app_ui = ui.page_fluid(
             .sim-draggable-param { cursor: pointer; user-select: none; }
             .sim-draggable-param:active { cursor: grabbing; }
             .sim-chart-wrap { width: 100%; max-width: 100%; min-width: 300px; min-height: 420px; }
-            .sim-results-row { display: flex; align-items: stretch; flex-wrap: nowrap; gap: 1rem; }
-            .sim-results-row > .sim-results-chart { flex: 0 0 66.666667%; max-width: 66.666667%; min-width: 0; }
-            .sim-results-row > .sim-results-rec { flex: 1; min-width: 0; min-height: 420px; }
+            .sim-results-row { display: flex; align-items: stretch; flex-wrap: nowrap; gap: 0.5rem; }
+            .sim-results-row > .sim-results-chart { flex: 2 1 0%; min-width: 0; }
+            .sim-results-row > .sim-results-rec { flex: 1 1 0%; min-width: 0; min-height: 420px; }
             """
         ),
         class_="card p-4 mt-3",
@@ -999,7 +999,6 @@ def server(input: Inputs, output: Outputs, session: Session):
         n_shipments = (res.get("baseline_on_time") or 0) + (res.get("baseline_delayed") or 0)
         caveat = f"* Analysis based on {n_shipments} shipments. Values reflect simulation results."
         return ui.div(
-            ui.p(HTML(caveat), class_="text-muted mb-2", style="font-size: 0.75rem;"),
             ui.div(
                 ui.div(
                     ui.div(output_widget("sim_chart"), class_="sim-chart-wrap"),
@@ -1015,6 +1014,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ),
                 class_="sim-results-row",
             ),
+            ui.p(HTML(caveat), class_="text-muted mb-2 mt-3", style="font-size: 0.75rem;"),
         )
 
     @render_widget
@@ -1046,12 +1046,11 @@ def server(input: Inputs, output: Outputs, session: Session):
                 fig.add_trace(go.Scatter(
                     x=[inv_sweet], y=[on_sweet], mode="markers",
                     marker=dict(size=12, color="gold", symbol="star", line=dict(width=1, color="gray")),
-                    name=f"{label} (sweet)",
-                    legendgroup=label,
+                    showlegend=False,
                 ))
         fig.update_layout(
             height=420,
-            autosize=False,
+            autosize=True,
             xaxis_title="Investment ($)",
             yaxis_title="On-time count",
             margin=dict(t=50, b=80, l=55, r=30),
