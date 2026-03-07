@@ -3,8 +3,11 @@ Shipment analysis pipeline.
 Fetches in-transit shipments, enriches with stops/hubs/risks,
 flags via OpenAI (On Time / Delayed / Critical), and writes to insights.
 """
+from __future__ import annotations
+
 import json
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 
@@ -192,17 +195,20 @@ def _build_shipment_payload(shipment: dict, stops: list, future_data: dict) -> d
     }
 
 
-def _call_openai_for_flag(client, payload: dict) -> dict:
-    """Step 4: Call OpenAI to get flag and predicted_arrival."""
-    prompt = """You are a logistics analyst. Given the following shipment data, determine if it will be:
-- "On Time": Parcel will arrive on time
-- "Delayed": Parcel will be delayed
-- "Critical": A high-priority parcel (priority_level >= 7) that will be delayed
+def _call_openai(client, payload: dict) -> dict:
+    """Single OpenAI call: flag, predicted_arrival, and reasoning."""
+    prompt = """You are a logistics analyst. Given the shipment data below, determine:
+- flag: "On Time" | "Delayed" | "Critical" (Critical = high-priority parcel that will be delayed)
+- predicted_arrival: ISO8601 timestamp or null
+- reasoning: 1-2 short sentences explaining why (for Delayed/Critical) or "On track" (for On Time)
 
-Consider: actual vs planned arrival/departure at past stops, hub status (Open/Congested/Closed), hub occupancy, risks (Weather/Traffic/Labor) with severity and est_delay_hrs, and final_deadline.
+Classification rules:
+- On Time: Use when (a) all past stops show actual_arrival/actual_departure on or before planned times, AND (b) future hubs are Open (not Congested/Closed), AND (c) future hubs have no high-severity risks (severity <= 4) or no risks at all. Do not flag Delayed/Critical just because some low-severity risks exist; weigh past performance and hub status.
+- Delayed: Use when there are clear delays (past stops late) or future hubs Congested/Closed or high-severity risks (severity >= 7) that will likely cause delay.
+- Critical: ONLY when priority_level >= 8 in the shipment data. If priority_level < 8, you MUST use Delayed, never Critical.
 
-Respond with ONLY a JSON object, no markdown:
-{"flag": "On Time" | "Delayed" | "Critical", "predicted_arrival": "ISO8601 timestamp or null"}
+Respond with ONLY this JSON, no markdown:
+{"flag": "On Time"|"Delayed"|"Critical", "predicted_arrival": "ISO8601 or null", "reasoning": "brief text"}
 
 Shipment data:
 """
@@ -213,26 +219,21 @@ Shipment data:
         temperature=0,
     )
     text = response.choices[0].message.content.strip()
-    # Remove markdown code blocks if present
     if text.startswith("```"):
         text = text.split("\n", 1)[1].rsplit("```", 1)[0]
     return json.loads(text)
 
 
-def _call_openai_for_reasoning(client, payload: dict, flag: str) -> str:
-    """Step 6: Call OpenAI to generate reasoning for Delayed/Critical."""
-    prompt = f"""This shipment was flagged as "{flag}". In 1-2 short sentences, explain why (e.g., which hubs, risks, or delays caused it). Be concise.
-
-Shipment data:
-{json.dumps(payload, indent=2, default=str)}
-
-Respond with ONLY the reasoning text, no JSON or quotes."""
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0,
+def get_all_insights() -> list[dict]:
+    """Fetch all insights from the database for display."""
+    rows = execute_query(
+        """
+        SELECT insight_id, shipment_id, flag_status, predicted_arrival, reasoning
+        FROM insights
+        ORDER BY shipment_id
+        """
     )
-    return response.choices[0].message.content.strip()
+    return [dict(r) for r in rows]
 
 
 def _upsert_insight(shipment_id: str, flag_status: str, predicted_arrival, reasoning: str | None = None):
@@ -257,14 +258,30 @@ def _upsert_insight(shipment_id: str, flag_status: str, predicted_arrival, reaso
 def run_analysis() -> dict:
     """
     Run the full analysis pipeline.
-    Returns: { "on_time": int, "delayed": int, "critical": int, "error": str | None }
+    Returns: {
+        "on_time": int, "delayed": int, "critical": int,
+        "insights_written": list[dict],  # rows added/updated this run
+        "error": str | None
+    }
     """
     counts = {"on_time": 0, "delayed": 0, "critical": 0}
+    insights_written = []
     try:
         # Step 1
         shipments = _fetch_in_transit_shipments()
         if not shipments:
-            return {**counts, "error": None}
+            return {**counts, "insights_written": [], "error": None}
+
+        # Optional: limit for faster demos (set MAX_SHIPMENTS=8 in .env)
+        _load_env()
+        max_ship = os.environ.get("MAX_SHIPMENTS")
+        if max_ship:
+            try:
+                n = int(max_ship)
+                if n > 0:
+                    shipments = shipments[:n]
+            except ValueError:
+                pass
 
         shipment_ids = [s["shipment_id"] for s in shipments]
         current_stop_index_by_shipment = {s["shipment_id"]: s["current_stop_index"] or 0 for s in shipments}
@@ -277,39 +294,53 @@ def run_analysis() -> dict:
 
         client = _get_openai_client()
 
-        for shipment in shipments:
+        def _process_one(shipment):
             sid = shipment["shipment_id"]
             stops = stops_by_shipment.get(sid, [])
             future_data = future_data_by_shipment.get(sid, {"future_hubs": [], "future_risks": []})
             payload = _build_shipment_payload(shipment, stops, future_data)
-
-            # Step 4
-            result = _call_openai_for_flag(client, payload)
+            result = _call_openai(client, payload)
             flag = result.get("flag", "On Time")
             if flag not in ("On Time", "Delayed", "Critical"):
                 flag = "On Time"
+            # Enforce: Critical only when priority_level >= 8
+            pri = shipment.get("priority_level") or 0
+            if flag == "Critical" and pri < 8:
+                flag = "Delayed"
             pred_arr = result.get("predicted_arrival")
+            pred_arr_str = None
+            pred_arr_dt = None
             if pred_arr and isinstance(pred_arr, str):
+                pred_arr_str = pred_arr
                 try:
-                    pred_arr = datetime.fromisoformat(pred_arr.replace("Z", "+00:00"))
+                    pred_arr_dt = datetime.fromisoformat(pred_arr.replace("Z", "+00:00"))
                 except Exception:
-                    pred_arr = None
+                    pred_arr_dt = None
+            reasoning = result.get("reasoning") or None
+            _upsert_insight(sid, flag, pred_arr_dt, reasoning)
+            return {
+                "shipment_id": sid,
+                "flag_status": flag,
+                "predicted_arrival": pred_arr_str or (pred_arr_dt.isoformat() if pred_arr_dt else None),
+                "reasoning": reasoning or "-",
+            }, flag
 
-            # Step 6: Reasoning for Delayed/Critical (before Step 5 so we upsert once)
-            reasoning = None
-            if flag in ("Delayed", "Critical"):
-                reasoning = _call_openai_for_reasoning(client, payload, flag)
+        # Run in parallel (15 workers)
+        with ThreadPoolExecutor(max_workers=15) as ex:
+            futures = {ex.submit(_process_one, s): s for s in shipments}
+            for future in as_completed(futures):
+                row, flag = future.result()
+                insights_written.append(row)
+                if flag == "On Time":
+                    counts["on_time"] += 1
+                elif flag == "Delayed":
+                    counts["delayed"] += 1
+                else:
+                    counts["critical"] += 1
 
-            # Step 5: Populate dataset with flag and reasoning
-            _upsert_insight(sid, flag, pred_arr, reasoning)
+        # Sort by shipment_id for consistent display
+        insights_written.sort(key=lambda x: x["shipment_id"])
 
-            if flag == "On Time":
-                counts["on_time"] += 1
-            elif flag == "Delayed":
-                counts["delayed"] += 1
-            else:
-                counts["critical"] += 1
-
-        return {**counts, "error": None}
+        return {**counts, "insights_written": insights_written, "error": None}
     except Exception as e:
-        return {**counts, "error": str(e)}
+        return {**counts, "insights_written": insights_written, "error": str(e)}
