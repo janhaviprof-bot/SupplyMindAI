@@ -175,10 +175,10 @@ def _fetch_stops_with_hubs_risks(shipment_ids: list[str]) -> dict:
 
 
 def _build_enriched_payload(shipment: dict, stops: list) -> dict:
-    """Step 5: Build enriched payload for AI."""
+    """Step 5: Build enriched payload for AI and simulation."""
     origin = stops[0]["hub_name"] if stops else None
     destination = stops[-1]["hub_name"] if stops else None
-    return {
+    payload = {
         "shipment_id": shipment["shipment_id"],
         "priority_level": shipment["priority_level"],
         "material_type": shipment.get("material_type"),
@@ -187,6 +187,9 @@ def _build_enriched_payload(shipment: dict, stops: list) -> dict:
         "destination": destination,
         "stops": stops,
     }
+    if shipment.get("delivery_ts"):
+        payload["delivery_ts"] = shipment["delivery_ts"]
+    return payload
 
 
 def _split_and_metrics(shipments: list[dict], stops_by_shipment: dict) -> tuple[list, list, dict]:
@@ -236,6 +239,57 @@ def _split_and_metrics(shipments: list[dict], stops_by_shipment: dict) -> tuple[
     return on_time, delayed, metrics
 
 
+# Canonical simulation parameter types (5 levers)
+SIM_PARAM_TYPES = (
+    "hub_capacity",
+    "dispatch_time_at_hub",
+    "transit_mode",
+    "earlier_dispatch",
+    "risk_based_buffer",
+)
+
+
+def parse_recommendation_to_sim_param(text: str) -> dict | None:
+    """
+    Parse a recommendation string into a simulatable parameter.
+    Returns {type, target_hub, target_route} or None if unparseable.
+    """
+    if not text or not isinstance(text, str):
+        return None
+    t = text.strip().lower()
+    # Hub capacity / congestion (same lever)
+    if "increase capacity" in t or "expand capacity" in t or "reduce congestion" in t:
+        # Extract hub name: "X hub:" or "Hub X:" pattern
+        for sep in [" hub:", " hub ", ":"]:
+            if sep in t:
+                parts = t.split(sep, 1)
+                if parts:
+                    hub = parts[0].replace("hub", "").strip()
+                    if hub:
+                        return {"type": "hub_capacity", "target_hub": hub, "target_route": None}
+        return {"type": "hub_capacity", "target_hub": None, "target_route": None}
+    # Dispatch time at hub
+    if "reduce dwell" in t or "speed up processing" in t or "dispatch time" in t and "hub" in t:
+        for sep in [" hub:", " hub ", ":"]:
+            if sep in t:
+                parts = t.split(sep, 1)
+                if parts:
+                    hub = parts[0].replace("hub", "").strip()
+                    if hub:
+                        return {"type": "dispatch_time_at_hub", "target_hub": hub, "target_route": None}
+        return {"type": "dispatch_time_at_hub", "target_hub": None, "target_route": None}
+    # Transit mode
+    if "faster transit" in t or "faster mode" in t or "switch to faster" in t:
+        return {"type": "transit_mode", "target_hub": None, "target_route": None}
+    # Earlier dispatch
+    if "dispatch earlier" in t or "add buffer time" in t and "risk" not in t:
+        return {"type": "earlier_dispatch", "target_hub": None, "target_route": None}
+    # Risk-based buffer
+    if "risk-based" in t or "risk buffer" in t or "predicted-risk" in t or "eta buffer" in t:
+        return {"type": "risk_based_buffer", "target_hub": None, "target_route": None}
+    return None
+
+
 def _truncate_summary(text: str, max_words: int = 100) -> str:
     """Truncate text to max_words."""
     words = text.split()
@@ -268,10 +322,10 @@ Return ONLY valid JSON with no markdown or extra text:
 {{
   "summary": "Max 100 words. Brief overview of supply chain findings and key issues.",
   "control_parameters": [
-    "Chicago hub: Use alternate routing",
-    "Dallas route: Optimize dispatch time",
-    "Priority shipments: Switch to faster transit",
-    "Hub Z: Reduce congestion"
+    "Hub Chicago: Increase capacity",
+    "Hub Dallas: Reduce dwell time",
+    "Priority shipments: Use faster mode",
+    "Route LA-Chicago: Add risk-based ETA buffer"
   ],
   "top_parameters": [
     {{"label": "Short label 1", "detail": "Implementation steps."}},
@@ -280,9 +334,18 @@ Return ONLY valid JSON with no markdown or extra text:
   ]
 }}
 
+CRITICAL RULES - Use ONLY these 5 parameter types (no others):
+1. Hub capacity: Use phrasings like "Hub X: Increase capacity" or "Hub X: Expand capacity" (name the hub from the data).
+2. Dispatch time at hub: "Hub X: Reduce dwell time" or "Hub X: Speed up processing".
+3. Transit mode: "Route X: Switch to faster transit" or "Priority shipments: Use faster mode".
+4. Earlier dispatch: "Shipments via Hub X: Dispatch earlier" or "Route X: Add buffer time".
+5. Risk-based buffer: "Route X: Add risk-based ETA buffer" or "Hub X route: Add predicted-risk buffer".
+
+EXCLUDE (do NOT suggest): alternate routing, material type changes, supplier changes, or any action we cannot simulate with these 5 levers.
+
 Rules:
-- control_parameters: Exactly 3-4 items. Format each as [place/material/thing]: [action]. Always name the specific hub, route, or resource (e.g., "Chicago hub: Reduce congestion", "Dallas route: Use alternate hub", "Priority shipments: Switch to faster transit"). Never use vague targets like "hub" alone.
-- top_parameters: Exactly 2-3 objects. "label" = short button name. "detail" = 1-2 sentences.
+- control_parameters: Exactly 3-4 items. Format as above. Name the specific hub or route from the data (e.g., use hubs from top_delayed_hubs). Never use vague targets.
+- top_parameters: Exactly 2-3 objects. "label" = short button name matching one of the 5 types. "detail" = 1-2 sentences.
 - Summary must be at most 100 words."""
 
     response = client.chat.completions.create(
@@ -318,7 +381,9 @@ Rules:
     }
 
 
-def run_optimization_insights(date_range: str, start_date=None, end_date=None) -> dict:
+def run_optimization_insights(
+    date_range: str, start_date=None, end_date=None, include_raw_data: bool = False
+) -> dict:
     """
     Run the optimization insights pipeline.
     Returns: {
@@ -329,6 +394,7 @@ def run_optimization_insights(date_range: str, start_date=None, end_date=None) -
         "delayed_count": int,
         "summary_text": str,      # "Analyzed X on-time and Y delayed..."
         "error": str | None
+        [, "on_time_raw": list, "delayed_raw": list]  # when include_raw_data=True
     }
     """
     result = {
@@ -358,6 +424,9 @@ def run_optimization_insights(date_range: str, start_date=None, end_date=None) -
         result["on_time_count"] = len(on_time)
         result["delayed_count"] = len(delayed)
         result["summary_text"] = f"Analyzed <strong>{len(on_time)} on-time</strong> and <strong>{len(delayed)} delayed</strong> deliveries ({start_str}–{end_str})."
+        if include_raw_data:
+            result["on_time_raw"] = on_time
+            result["delayed_raw"] = delayed
 
         client = _get_openai_client()
         ai_result = _call_openai_recommendations(
@@ -376,3 +445,15 @@ def run_optimization_insights(date_range: str, start_date=None, end_date=None) -
     except Exception as e:
         result["error"] = str(e)
         return result
+
+
+def run_optimization_insights_with_data(
+    date_range: str, start_date=None, end_date=None
+) -> dict:
+    """
+    Same as run_optimization_insights but includes raw enriched payloads for simulation.
+    Returns: { ...result, "on_time_raw": [...], "delayed_raw": [...] }
+    """
+    return run_optimization_insights(
+        date_range, start_date, end_date, include_raw_data=True
+    )
