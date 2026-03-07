@@ -38,6 +38,9 @@ _today = date.today()
 _default_start = _today - timedelta(days=7)
 _default_end = _today
 
+# Link to Card 3 "Dataset structure" in README
+_DOCS_CARD3_DATA_URL = "https://github.com/nabiraahmad555/supplymind-ai/blob/main/README.md#card-3-supply-chain-optimization"
+
 def _priority_word(match):
     try:
         n = int(match.group(1))
@@ -596,6 +599,8 @@ app_ui = ui.page_fluid(
             .sim-results-row > .sim-results-rec {{ flex: 1 1 0%; min-width: 0; min-height: 380px; border-radius: 12px; border: 1px solid {_PALETTE["border"]}; }}
             .opt-date-select-wrapper select {{ border-color: {_PALETTE["primary"]} !important; border-width: 1px; border-radius: 6px; }}
             .opt-date-select-wrapper select:focus {{ border-color: {_PALETTE["primary"]} !important; box-shadow: 0 0 0 0.2rem rgba(37, 99, 235, 0.15); }}
+            .learn-more-link {{ color: #2563eb !important; text-decoration: none; }}
+            .learn-more-link:hover {{ text-decoration: underline !important; }}
             .param-list {{ display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }}
             .param-row {{ display: flex; flex-direction: column; gap: 1px; padding: 5px 10px; border-radius: 6px; background: #fafbfc; border: 1px solid {_PALETTE["primary"]}; }}
             .param-label {{ font-size: 0.72rem; font-weight: 600; color: #374151; letter-spacing: 0.02em; }}
@@ -884,6 +889,34 @@ def server(input: Inputs, output: Outputs, session: Session):
     @reactive.effect
     @reactive.event(input.close_sim_algo_modal)
     def on_close_sim_algo_modal():
+        ui.modal_remove()
+
+    @reactive.effect
+    @reactive.event(input.opt_params_info)
+    def show_opt_params_modal():
+        m = ui.modal(
+            ui.p(
+                "The parameters are suggested via analysis of arrival and departure time data for actual and estimated shipments at various hub locations, and of risk and intensity data.",
+                class_="mb-3",
+                style="font-size: 0.9rem;",
+            ),
+            ui.p(
+                ui.a("Learn more...", href=_DOCS_CARD3_DATA_URL, target="_blank", class_="small learn-more-link"),
+                class_="mb-0",
+            ),
+            title="How suggestions are generated",
+            easy_close=True,
+            footer=ui.div(
+                ui.input_action_button("close_opt_params_modal", "Close", class_="btn btn-secondary"),
+                class_="d-flex justify-content-end",
+            ),
+            size="m",
+        )
+        ui.modal_show(m)
+
+    @reactive.effect
+    @reactive.event(input.close_opt_params_modal)
+    def on_close_opt_params_modal():
         ui.modal_remove()
 
     @reactive.effect
@@ -1288,7 +1321,16 @@ def server(input: Inputs, output: Outputs, session: Session):
             summary_text = result.get("summary_text", "")
             summary = result.get("summary", "")
             control_params = result.get("control_parameters", [])
-            left_content.append(ui.p(HTML(summary_text), class_="text-muted small"))
+            left_content.append(ui.div(
+                ui.p(HTML(summary_text), class_="text-muted small mb-0 flex-grow-1"),
+                ui.input_action_link(
+                    "opt_params_info",
+                    "?",
+                    class_="btn btn-link text-decoration-none rounded-circle p-0 sim-info-trigger opt-params-info-q",
+                    style="font-size: 0.6rem; font-weight: 600; line-height: 1; width: 1.5em; height: 1.5em; min-width: 1.5em; border: 1px solid #9ca3af; color: #6b7280; padding: 0 !important; display: inline-flex; align-items: center; justify-content: center; transition: background 0.2s, color 0.2s, border-color 0.2s; flex-shrink: 0;",
+                ),
+                class_="d-flex align-items-center justify-content-between gap-2",
+            ))
             if summary or control_params:
                 changes_list = control_params[:4]
                 box_parts = []
