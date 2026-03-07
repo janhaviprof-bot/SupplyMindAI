@@ -241,23 +241,26 @@ app_ui = ui.page_fluid(
                 ui.output_ui("opt_results"),
                 class_="col-lg-6 border-end pe-4",
             ),
-            # RHS column: Parameter Simulation
+            # RHS column: Parameter Simulation (hidden until user runs Get Supply Chain Insights)
             ui.div(
-                ui.h5("Parameter Simulation", class_="h6 mb-2"),
-                ui.p("Click a parameter to select. Run simulation to see results.", class_="small text-muted mb-2"),
-                ui.h6("Parameters to simulate", class_="mt-2 mb-1"),
-                ui.div(ui.output_ui("sim_param_chips"), id="sim-params-source", class_="sim-draggable-source mb-2"),
-                ui.h6("Selected parameters", class_="mt-2 mb-1"),
-                ui.div(
-                    ui.span("Click a parameter above to select", class_="text-muted"),
-                    id="sim-selected-zone",
-                    class_="sim-drop-zone border border-2 border-dashed rounded p-3 mb-2",
+                ui.div(ui.input_text("opt_insights_ready", "", value="no"), class_="d-none"),
+                ui.panel_conditional(
+                    "input.opt_insights_ready === 'yes'",
+                    ui.div(
+                        ui.h5("Parameter Simulation", class_="h6 mb-2"),
+                        ui.h6("Parameters to simulate", class_="mt-2 mb-1"),
+                        ui.div(ui.output_ui("sim_param_chips"), id="sim-params-source", class_="sim-draggable-source mb-2"),
+                        ui.h6("Selected parameters", class_="mt-2 mb-1"),
+                        ui.div(
+                            ui.span("Click a parameter above to select", class_="text-muted"),
+                            id="sim-selected-zone",
+                            class_="sim-drop-zone border border-2 border-dashed rounded p-3 mb-2",
+                        ),
+                        ui.div(ui.input_text("sim_selected_param", "", value=""), class_="d-none"),
+                        ui.input_action_button("sim_run", "Run simulation", class_="btn-primary mt-2"),
+                        class_="card border rounded mt-3 p-3",
+                    ),
                 ),
-                ui.div(ui.input_text("sim_selected_param", "", value=""), class_="d-none"),
-                ui.p("Sweet spot = best ROI. Run simulation to compare parameters.", class_="small text-muted mt-3 mb-0"),
-                ui.h6("Configure & run", class_="mt-2 mb-1"),
-                ui.output_ui("sim_config"),
-                ui.input_action_button("sim_run", "Run simulation", class_="btn-primary mt-2"),
                 class_="col-lg-6 ps-4",
             ),
             class_="row",
@@ -800,6 +803,14 @@ def server(input: Inputs, output: Outputs, session: Session):
         finally:
             opt_loading.set(False)
 
+    @reactive.effect
+    def _update_opt_insights_ready():
+        r = opt_result()
+        ui.update_text(
+            "opt_insights_ready",
+            value="yes" if r is not None else "no",
+        )
+
     @render.ui
     def opt_status():
         if opt_loading():
@@ -1020,18 +1031,6 @@ def server(input: Inputs, output: Outputs, session: Session):
                 )
             )
         return ui.div(*chips, class_="mb-0")
-
-    @render.ui
-    def sim_config():
-        sel = _sim_selected()
-        if not sel:
-            return ui.span("Select one or more parameters above, or leave empty to simulate top 5.", class_="text-muted")
-        labels = sel[:5]
-        labels_short = [l[:40] + ("..." if len(l) > 40 else "") for l in labels]
-        return ui.p(
-            "Simulating: " + ", ".join(labels_short),
-            class_="small text-muted",
-        )
 
     @reactive.effect
     @reactive.event(input.sim_run)
