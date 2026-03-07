@@ -1125,7 +1125,7 @@ def server(input: Inputs, output: Outputs, session: Session):
         return ui.div(
             ui.div(
                 ui.h5("Simulation result", class_="card-title mb-0"),
-                class_="card-header",
+                class_="card-header bg-transparent",
             ),
             ui.div(
                 ui.output_ui("sim_status"),
@@ -1157,12 +1157,9 @@ def server(input: Inputs, output: Outputs, session: Session):
                     class_="sim-results-chart",
                 ),
                 ui.div(
-                    ui.div(
-                        ui.h6("Recommendations", class_="card-title"),
-                        ui.output_ui("sim_recommendation"),
-                        class_="card-body",
-                    ),
-                    class_="card border sim-results-rec",
+                    ui.h6("Recommendations", class_="card-title mb-2"),
+                    ui.output_ui("sim_recommendation"),
+                    class_="card border sim-results-rec p-3",
                 ),
                 class_="sim-results-row",
             ),
@@ -1279,7 +1276,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                         class_="mb-0",
                     )
                 )
-            parts.append(ui.div(*card_inner, class_="card border-primary mb-2 p-2 bg-light"))
+            parts.append(ui.div(*card_inner, class_="border-start border-3 border-primary ps-2 mb-2"))
         def _alt_block(label: str, text: str, m: dict):
             block = [ui.p(ui.strong(f"{label}: "), text, class_="mb-1 small")]
             inv_sweet = m.get("inv_sweet", 0)
