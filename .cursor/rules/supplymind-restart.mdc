@@ -1,0 +1,21 @@
+---
+description: Kill and rerun SupplyMindAI app after code changes
+globs: SupplyMindAI/**/*
+alwaysApply: false
+---
+
+# SupplyMindAI: Restart After Edits
+
+When making changes to the SupplyMindAI app (e.g. `app.py` or any file in `SupplyMindAI/`), always:
+
+1. **Kill** any process using port 8000:
+   ```powershell
+   Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue | Where-Object { $_.OwningProcess -gt 4 } | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }
+   ```
+
+2. **Rerun** the app:
+   ```powershell
+   py -m shiny run SupplyMindAI/app.py --launch-browser
+   ```
+
+Run the kill command first, then start the app. Do this automatically after each edit session.
