@@ -167,25 +167,33 @@ def _condense_reason(text: str, max_len: int = 95) -> str:
     return (out[0].upper() + out[1:]).rstrip(".,") + "." if out and len(out) > 1 else "Requires attention."
 
 
-# YC-style SaaS palette
+# Layered SaaS palette (Stripe/Linear/YC-style)
 _PALETTE = {
     "primary": "#2563eb",
     "primary_hover": "#1d4ed8",
-    "accent": "#0ea5e9",
-    "bg": "#f6f7f9",
+    "accent": "#06b6d4",
+    "accent_alt": "#0ea5e9",
+    "bg": "#f3f4f6",
     "card_bg": "#ffffff",
+    "card_secondary": "#f8fafc",
     "border": "#e5e7eb",
     "text": "#111827",
     "text_secondary": "#6b7280",
     "success": "#22c55e",
     "warning": "#f59e0b",
     "danger": "#ef4444",
-    "kpi_bg": "#fafafa",
-    "light_gray": "#e5e7eb",
-    "off_white": "#f6f7f9",
-    "white": "#ffffff",
+    "section_bg": "#eef2ff",
+    "kpi_bg": "#eff6ff",
+    "kpi_border": "#dbeafe",
+    "needs_attention_bg": "#fffbeb",
+    "needs_attention_border": "#fde68a",
+    "drawer_bg": "#f8fafc",
     "chip_bg": "#eef2ff",
+    "chip_color": "#3730a3",
+    "chip_selected_bg": "#2563eb",
     "chip_hover": "#e0e7ff",
+    "light_gray": "#e5e7eb",
+    "white": "#ffffff",
 }
 
 app_ui = ui.page_fluid(
@@ -223,9 +231,9 @@ app_ui = ui.page_fluid(
           color: {_PALETTE["text"]}; border-radius: 8px; }}
         .bg-light {{ background-color: {_PALETTE["kpi_bg"]} !important; border-radius: 8px; }}
         .alert-danger {{ border-radius: 8px; }}
-        .kpi-card {{ background: {_PALETTE["kpi_bg"]}; border-radius: 10px; border: none;
-          min-width: 90px; padding: 12px 16px; box-shadow: none; transition: background 0.15s; }}
-        .kpi-card:hover {{ background: #f5f5f5; box-shadow: none; }}
+        .kpi-card {{ background: {_PALETTE["kpi_bg"]}; border: 1px solid {_PALETTE["kpi_border"]};
+          border-radius: 10px; min-width: 90px; padding: 12px 16px; box-shadow: none; transition: background 0.15s; }}
+        .kpi-card:hover {{ background: #dbeafe33; box-shadow: none; }}
         .kpi-value {{ font-size: 1.5rem; font-weight: 600; color: {_PALETTE["text"]}; }}
         .kpi-label {{ font-size: 0.75rem; color: {_PALETTE["text_secondary"]}; margin-top: 2px; }}
         .kpi-dot {{ width: 6px; height: 6px; border-radius: 50%; display: inline-block; margin-right: 6px; }}
@@ -234,11 +242,11 @@ app_ui = ui.page_fluid(
         .critical-list-item:hover {{ background: #f9fafb; }}
         .critical-list-item:last-child {{ margin-bottom: 0; }}
         .sim-chip {{ display: inline-block; padding: 6px 12px; border-radius: 999px;
-          background: {_PALETTE["chip_bg"]}; color: {_PALETTE["primary"]}; font-size: 0.8rem;
+          background: {_PALETTE["chip_bg"]}; color: {_PALETTE["chip_color"]}; font-size: 0.8rem;
           margin-right: 6px; margin-bottom: 6px; cursor: pointer; user-select: none;
           border: none; transition: background 0.15s; }}
         .sim-chip:hover {{ background: {_PALETTE["chip_hover"]}; }}
-        .sim-chip-selected {{ background: {_PALETTE["primary"]}; color: white; }}
+        .sim-chip-selected {{ background: {_PALETTE["chip_selected_bg"]}; color: white; }}
         .sim-chip-selected:hover {{ background: {_PALETTE["primary_hover"]}; color: white; }}
         .sim-drop-zone {{ min-height: 48px; border-radius: 8px; border: 1px dashed {_PALETTE["border"]};
           background: {_PALETTE["kpi_bg"]}; transition: all 0.15s; }}
@@ -249,8 +257,13 @@ app_ui = ui.page_fluid(
         .border-start {{ border-color: {_PALETTE["border"]} !important; }}
         .btn-secondary {{ background: white; color: {_PALETTE["text"]}; border: 1px solid {_PALETTE["border"]}; border-radius: 8px; font-weight: 500; }}
         .btn-secondary:hover {{ background: #f9fafb; color: {_PALETTE["text"]}; border-color: {_PALETTE["border"]}; }}
-        .offcanvas {{ border-left: 1px solid {_PALETTE["border"]}; }}
-        .offcanvas-header {{ border-color: {_PALETTE["border"]}; }}
+        .offcanvas {{ border-left: 1px solid {_PALETTE["border"]}; background: {_PALETTE["drawer_bg"]} !important; }}
+        .offcanvas-header {{ border-color: {_PALETTE["border"]}; background: {_PALETTE["drawer_bg"]} !important; }}
+        .offcanvas-body {{ background: {_PALETTE["drawer_bg"]} !important; }}
+        .section-container {{ background: {_PALETTE["section_bg"]}; border-radius: 14px; padding: 20px; margin-bottom: 16px; }}
+        .card-accent-primary {{ border-top: 3px solid {_PALETTE["primary"]} !important; }}
+        .card-accent-accent {{ border-top: 3px solid {_PALETTE["accent"]} !important; }}
+        .card-secondary {{ background: {_PALETTE["card_secondary"]} !important; }}
         """
     ),
     ui.tags.header(
@@ -281,15 +294,21 @@ app_ui = ui.page_fluid(
         style=f"border-bottom: 1px solid {_PALETTE['border']}; background: {_PALETTE['card_bg']};",
     ),
     ui.output_ui("status"),
-    ui.output_ui("results"),
     ui.div(
-        ui.h5("Prediction Map", class_="mb-2"),
-        ui.p(
-            "Hubs colored by AI prediction insights for in-transit shipments.",
-            class_="text-muted small mb-2",
+        ui.output_ui("results"),
+        class_="section-container",
+    ),
+    ui.div(
+        ui.div(
+            ui.h5("Prediction Map", class_="mb-2"),
+            ui.p(
+                "Hubs colored by AI prediction insights for in-transit shipments.",
+                class_="text-muted small mb-2",
+            ),
+            output_widget("hub_map"),
+            class_="card card-accent-accent p-3 mt-0",
         ),
-        output_widget("hub_map"),
-        class_="card p-3 mt-2",
+        class_="section-container",
     ),
     ui.div(ui.input_text("escalate_which", label="", value=""), class_="d-none"),
     ui.div(ui.input_text("insight_detail_id", label="", value=""), class_="d-none"),
@@ -314,11 +333,12 @@ app_ui = ui.page_fluid(
     ),
     # Single Supply Chain Optimization card (LHS + RHS divided)
     ui.div(
-        ui.h5("Supply Chain Optimization", class_="mb-0"),
-        ui.p(
-            "Get AI-powered recommendations to improve your supply chain based on delivered shipment data."
-        ),
         ui.div(
+            ui.h5("Supply Chain Optimization", class_="mb-0"),
+            ui.p(
+                "Get AI-powered recommendations to improve your supply chain based on delivered shipment data."
+            ),
+            ui.div(
             # LHS column (with vertical divider)
             ui.div(
                 ui.output_ui("opt_status"),
@@ -352,7 +372,9 @@ app_ui = ui.page_fluid(
             ),
             class_="row",
         ),
-        ui.tags.script(
+        class_="card card-accent-primary p-3 mt-2",
+    ),
+    ui.tags.script(
             """
             (function() {
               var selected = [];
@@ -443,7 +465,7 @@ app_ui = ui.page_fluid(
             .sim-results-row > .sim-results-rec {{ flex: 1 1 0%; min-width: 0; min-height: 380px; border-radius: 12px; border: 1px solid {_PALETTE["border"]}; }}
             """
         ),
-        class_="card p-3 mt-2",
+        class_="section-container",
     ),
     ui.output_ui("sim_results_card"),
 )
@@ -804,7 +826,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                             ui.div(ui.span("No critical shipments.", class_="text-muted small"), class_="py-3 px-3")
                         ],
                         class_="",
-                        style=f"flex: 1; min-height: 120px; border-radius: 8px; border: 1px solid {_PALETTE['border']}; background: {_PALETTE['kpi_bg']};",
+                        style=f"flex: 1; min-height: 120px; border-radius: 12px; border: 1px solid {_PALETTE['needs_attention_border']}; background: {_PALETTE['needs_attention_bg']};",
                     ),
                     class_="p-3 d-flex flex-column",
                     style=f"flex: 1; min-width: 0; border-left: 1px solid {_PALETTE['border']};",
@@ -812,7 +834,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 class_="d-flex gap-0",
                 style="width: 100%;",
             ),
-            class_="card",
+            class_="card card-accent-primary",
         )
 
     # --- Optimization insights ---
@@ -1047,7 +1069,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                     box_parts.append(ui.tags.ul(*[ui.tags.li(_fmt_change(p), class_="small") for p in changes_list], class_="mb-0"))
                 left_content.append(ui.div(*box_parts, class_="bg-light p-3 rounded mt-2"))
 
-        return ui.div(*left_content, class_="card mt-2 p-3 h-100 flex-grow-1")
+        return ui.div(*left_content, class_="card card-secondary mt-2 p-3 h-100 flex-grow-1")
 
     # --- Simulation card ---
     sim_result = reactive.value(None)
@@ -1207,15 +1229,20 @@ def server(input: Inputs, output: Outputs, session: Session):
             return None
         return ui.div(
             ui.div(
-                ui.h5("Simulation result", class_="card-title mb-0"),
-                class_="card-header bg-transparent",
-            ),
-            ui.div(
-                ui.output_ui("sim_status"),
-                ui.output_ui("sim_results"),
-                class_="card-body p-4",
-            ),
-            class_="card mt-2",
+                ui.div(
+                    ui.div(
+                        ui.h5("Simulation result", class_="card-title mb-0"),
+                        class_="card-header bg-transparent",
+                    ),
+                    ui.div(
+                        ui.output_ui("sim_status"),
+                        ui.output_ui("sim_results"),
+                        class_="card-body p-4",
+                    ),
+                    class_="card card-accent-accent mt-0",
+                ),
+                class_="section-container",
+            )
         )
 
     @render.ui
@@ -1242,7 +1269,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ui.div(
                     ui.h6("Recommendations", class_="card-title mb-2"),
                     ui.output_ui("sim_recommendation"),
-                    class_="sim-results-rec p-3",
+                    class_="sim-results-rec card-secondary p-3",
                 ),
                 class_="sim-results-row",
             ),
