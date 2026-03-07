@@ -1224,6 +1224,22 @@ def server(input: Inputs, output: Outputs, session: Session):
         )
         return fig
 
+    def _curve_metrics(curves: list, baseline_ot: int) -> list[dict]:
+        """Extract per-curve metrics: inv_sweet, recovered, roi_level. Sorted by impact (recovered desc)."""
+        metrics_list = []
+        for c in curves:
+            pts = c.get("chart_points_3", [])
+            best = c.get("best_metrics", {})
+            inv_sweet = pts[1][0] if len(pts) >= 2 else 0
+            sim_ot = best.get("on_time_count", baseline_ot)
+            recovered = max(0, sim_ot - baseline_ot)
+            roi = recovered / inv_sweet if inv_sweet > 0 else (float("inf") if recovered > 0 else 0)
+            roi_level = "High" if roi > 1e-5 else ("Medium" if recovered > 0 else "Low")
+            metrics_list.append({"inv_sweet": inv_sweet, "recovered": recovered, "roi_level": roi_level})
+        # Sort by recovered (desc), then by ROI (prefer lower investment for same recovered)
+        metrics_list.sort(key=lambda m: (-m["recovered"], m["inv_sweet"]))
+        return metrics_list
+
     @render.ui
     def sim_recommendation():
         res = sim_result()
@@ -1238,20 +1254,57 @@ def server(input: Inputs, output: Outputs, session: Session):
         # AI error fallback
         if isinstance(insights, dict) and insights.get("error"):
             return _fallback_recommendation(res)
-        # Render AI-generated insights
+        # Build per-curve metrics (r1→curves[0], r2→curves[1], r3→curves[2])
+        curves = res.get("curves", [])
+        baseline_ot = res.get("baseline_on_time", 0)
+        curve_metrics = _curve_metrics(curves, baseline_ot)
         parts = []
         r1 = insights.get("recommendation_1", "").strip()
         if r1:
-            parts.append(ui.p(ui.strong("1. "), r1, class_="mb-2 small"))
+            m = curve_metrics[0] if curve_metrics else {}
+            inv_sweet = m.get("inv_sweet", 0)
+            recovered = m.get("recovered", 0)
+            roi_level = m.get("roi_level", "")
+            card_inner = [
+                ui.div(ui.strong("Master recommendation"), class_="small text-primary fw-semibold mb-1"),
+                ui.p(r1, class_="mb-1 small"),
+            ]
+            if inv_sweet > 0 or recovered > 0:
+                card_inner.append(
+                    ui.div(
+                        ui.span(
+                            f"${inv_sweet:,.0f} | +{recovered} recovered | {roi_level} ROI",
+                            class_="badge bg-light text-primary border border-primary",
+                        ),
+                        class_="mb-0",
+                    )
+                )
+            parts.append(ui.div(*card_inner, class_="card border-primary mb-2 p-2 bg-light"))
+        def _alt_block(label: str, text: str, m: dict):
+            block = [ui.p(ui.strong(f"{label}: "), text, class_="mb-1 small")]
+            inv_sweet = m.get("inv_sweet", 0)
+            recovered = m.get("recovered", 0)
+            if inv_sweet > 0 or recovered > 0:
+                block.append(ui.span(
+                    f"${inv_sweet:,.0f} | +{recovered} recovered",
+                    class_="badge bg-light text-secondary border border-secondary small",
+                ))
+            return ui.div(*block, class_="border-start border-3 border-secondary ms-2 ps-2 mb-2")
+
+        alternates = []
         r2 = insights.get("recommendation_2")
         if r2 and str(r2).strip():
-            parts.append(ui.p(ui.strong("2. "), str(r2).strip(), class_="mb-2 small"))
+            m = curve_metrics[1] if len(curve_metrics) > 1 else {}
+            alternates.append(_alt_block("Alternate 1", str(r2).strip(), m))
         r3 = insights.get("recommendation_3")
         if r3 and str(r3).strip():
-            parts.append(ui.p(ui.strong("3. "), str(r3).strip(), class_="mb-2 small"))
+            m = curve_metrics[2] if len(curve_metrics) > 2 else {}
+            alternates.append(_alt_block("Alternate 2", str(r3).strip(), m))
+        if alternates:
+            parts.append(ui.div(ui.div("Alternates", class_="small fw-semibold text-secondary mb-1"), *alternates, class_="mt-2"))
         alt = insights.get("alternative_params_message", "").strip()
         if alt:
-            parts.append(ui.p(alt, class_="mb-0 small text-muted"))
+            parts.append(ui.p(alt, class_="mb-0 small text-muted mt-2"))
         if not parts:
             return _fallback_recommendation(res)
         return ui.div(*parts, class_="small")

@@ -517,14 +517,14 @@ Return ONLY valid JSON with no markdown or extra text:
   "recommendation_1": "Primary actionable insight based on the best-performing curve. Be specific: which parameter, how much to invest, expected improvement.",
   "recommendation_2": "Second insight from next-best curve, or null if only 1 meaningful result.",
   "recommendation_3": "Third insight, or null if fewer than 3 meaningful results.",
-  "alternative_params_message": "When some parameters showed limited/no improvement: suggest 2-3 parameters from 'All parameters the user can simulate' that were NOT simulated, for the user to try instead. E.g. 'These parameters showed limited impact. Try instead: [param1], [param2].' If all simulated params were impactful, use empty string."
+  "alternative_params_message": "When no satisfactory alternates (r2, r3) exist OR when some simulated parameters showed limited/no improvement: recommend the user to replace insensitive parameters with another parameter from the 'Parameters to simulate' list. Phrase as a consultant. Example: 'Consider replacing [low-impact param] with [alternative param] in Parameters to simulate.' Use only params from 'All parameters the user can simulate' that were NOT simulated. Be concise, actionable, no bullet lists or raw arrays. If all simulated params were impactful and you have 2–3 strong alternates, use empty string."
 }}
 
 Rules:
 - Rank recommendations by impact (recovered shipments, ROI).
 - recommendation_1 must never be null when there is at least one curve.
 - Use null for recommendation_2 and recommendation_3 when graph data does not support them.
-- alternative_params_message: only suggest params from simulatable that are NOT in simulated."""
+- alternative_params_message: show when no satisfactory alternates OR some params had limited impact; recommend replacing insensitive params with another from Parameters to simulate list. Use only params from simulatable not in simulated. No bullet lists or raw arrays."""
 
     response = client.chat.completions.create(
         model="gpt-4o-mini",
