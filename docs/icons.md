@@ -1,123 +1,53 @@
-# `icons`
+# Icons for READMEs and Docs
 
-Need some thematic icons for your READMEs? Try the icons below!
+Need thematic Unicode icons for your SupplyMind AI docs? Use the icons below.
 
----
-
-## Basic Icons
-
-📊 Data & Analytics
-
-📈 (upward trend chart)
-
-📉 (downward trend chart)
-
-📊 (bar chart)
-
-📋 (clipboard — data or process steps)
-
-🧮 (abacus — calculation)
-
-📑 (bookmark tabs — reports or documentation)
-
-📚 Books
-
-📝 Memo
-
-⚙️ Process & Quality
-
-⚙️ (gear — process improvement)
-
-🔁 (repeat arrows — iteration)
-
-🧩 (puzzle piece — problem solving)
-
-🧪 (test tube — experiments)
-
-🧱 (brick — building robust systems)
-
-🧭 (compass — direction)
-
-🧰 (toolbox — engineering toolkit)
-
-🤖 (robot — AI / automation)
-
-🕒 Time & Events
-
-⏱️ (stopwatch — timed challenge)
-
-🗓️ (calendar — event schedule)
-
-⏰ (alarm clock — deadlines)
-
-🔔 (bell — notifications)
-
-⌛ (hourglass — time pressure)
-
-👥 People & Collaboration
-
-👤 (single person — participant)
-
-👥 (team — collaboration)
-
-🤝 (handshake — partnership)
-
-💬 (speech balloon — communication)
-
-🧠 (brain — innovation, learning)
-
-🏅 (medal — recognition, best solution)
-
-💡 Innovation & Metrics
-
-💡 (idea — insight, brainstorming)
-
-🏥 Hospital
-
-🏠 House
-
-🌞 Sun
-
-🌐 Internet
-
-🌍 Globe
-
-💻 Computer
-
-💾 Floppy Disk
-
-💰 Money
-
-💨 Dash
-
-💭 Thought Bubble
-
-🔢 (numbers — quantitative focus)
-
-🔍 (magnifying glass — analysis)
+More icons: [W3Schools UTF-8 Symbols](https://www.w3schools.com/charsets/ref_utf_misc_symbols.asp)
 
 ---
 
-## Funny Icons
+## SupplyMind AI — Suggested Icons
 
-🐍 Python
-
-🐧 Penguin
-
-🐙 Octopus
-
-💩 Poop
+| Icon | Use for |
+|------|---------|
+| 📦 | Shipments, packages |
+| 🗺️ | Prediction Map, geography |
+| ⭐ | Best investment point, sweet spot |
+| 📊 | Data, KPIs, charts |
+| 🚀 | Live app, deployment |
+| 📚 | Documentation |
+| ⚡ | Quick start, run commands |
+| 🔧 | Troubleshooting |
+| 📝 | Glossary, notes |
+| 🏗️ | Architecture |
 
 ---
 
-## More Icons
+## General Icons
 
-Find more unicode icons at [w3schools.com](https://www.w3schools.com/charsets/ref_utf_misc_symbols.asp)!
+**Data & analytics:** 📊 📈 📉 📋 🧮 🔍
+
+**Process & quality:** ⚙️ 🔁 🧩 🧪 🧭 🤖
+
+**Time:** ⏱️ 🗓️ ⏰ 🔔 ⌛
+
+**People:** 👤 👥 🤝 💬 🧠
+
+**Ideas:** 💡 💭 🔢
 
 ---
 
-![](images/banner_icons.png)
+## Tech Icons
+
+| Icon | Use for |
+|------|---------|
+| 🐍 | Python |
+| 💻 | Computer, app |
+| 🌐 | Web, API |
+| 📁 | Project structure |
+
+---
 
 <p align="center">
-  <b><a href="https://github.com/timothyfraser/aisystemshackathon/tree/main">🏠 Return to Home Page</a></b>
+  <b><a href="DOCUMENTATION_INDEX.md">📚 Documentation Index</a></b>
 </p>

@@ -1,6 +1,6 @@
 # Documentation Index — What to Find Where
 
-Use this page as your starting point. It explains where each topic lives and when to read each document.
+🚀 Use this page as your starting point. It explains where each topic lives and when to read each document.
 
 **[Try the live app](https://019cc876-2199-a739-4a67-dc4bb96d2042.share.connect.posit.cloud/)** — Deployed on Posit Connect Cloud.
 
@@ -55,6 +55,7 @@ Use this page as your starting point. It explains where each topic lives and whe
 | [context.md](context.md) | Project overview, stakeholders, technical stack, database schema (5 tables) |
 | [predictions.md](predictions.md) | How predictions work, AI confidence heuristic, architecture diagram |
 | [optimization-simulation.md](optimization-simulation.md) | Five levers, optimization workflow, simulation workflow, formulas |
+| [icons.md](icons.md) | Unicode icons for READMEs and docs |
 
 ---
 

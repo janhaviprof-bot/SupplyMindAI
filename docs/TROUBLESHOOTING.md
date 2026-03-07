@@ -1,6 +1,6 @@
 # Troubleshooting — When Something Goes Wrong
 
-Common issues and how to fix them.
+🔧 Common issues and how to fix them.
 
 ---
 
@@ -56,7 +56,7 @@ Common issues and how to fix them.
 **What it means:** The Prediction Map has no data to show.
 
 **What to try:**
-1. Click **Re-run Analysis** in the Delivery Health section first.
+1. Click **Re-run Analysis** in the Current Shipment Delivery Insight section first.
 2. The map needs insights from the analysis. If there are no in-transit shipments, the map will be empty or show only gray dots.
 3. Ensure the `hubs` table has `lat` and `lon` for your hub locations.
 

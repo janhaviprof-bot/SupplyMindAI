@@ -38,7 +38,7 @@ flowchart TB
     end
 
     subgraph App[💻 Shiny Dashboard]
-        A1[Delivery Health Card]
+        A1[Current Shipment Delivery Insight Card]
         A2[AI Confidence Donut]
         A3[Needs Attention Card]
         A4[Shipment Details Modal]
@@ -123,7 +123,7 @@ The model returns a confidence score (1–10). When that is missing or invalid, 
 
 ### 2. 💻 Dashboard (`app.py`)
 
-- **Delivery Health:** 📊 KPI cards (Total, On Time, Delayed, Critical), donut chart, Re-run Analysis
+- **Current Shipment Delivery Insight:** 📊 KPI cards (Total, On Time, Delayed, Critical), donut chart, Re-run Analysis
 - **Needs Attention:** Critical shipments with condensed summaries; click shipment ID for full insight modal
 - **Escalation:** Escalate button adds shipment to sidebar; View Escalated opens drawer
 
