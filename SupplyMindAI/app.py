@@ -212,9 +212,9 @@ app_ui = ui.page_fluid(
           transition: box-shadow 0.2s ease; }}
         .card:hover {{ box-shadow: 0 4px 10px rgba(0,0,0,0.06); }}
         .card-header {{ border-color: {_PALETTE["border"]}; color: {_PALETTE["text"]};
-          background: transparent; font-weight: 600; font-size: 1.15rem; }}
-        h5, h6 {{ color: {_PALETTE["text"]}; font-weight: 600; font-size: 1.15rem; }}
-        h6 {{ font-size: 0.95rem; }}
+          background: transparent; font-weight: 600; font-size: 1.35rem; }}
+        h5, h6 {{ color: {_PALETTE["text"]}; font-weight: 600; font-size: 1.3rem; }}
+        h6 {{ font-size: 1.1rem; }}
         .text-muted {{ color: {_PALETTE["text_secondary"]} !important; font-size: 0.8rem; }}
         .btn-primary {{ background-color: {_PALETTE["primary"]}; border: none; border-radius: 8px;
           font-weight: 500; color: white; }}
@@ -267,6 +267,7 @@ app_ui = ui.page_fluid(
         .card-secondary {{ background: {_PALETTE["card_secondary"]} !important; }}
         .rec-panel-header {{ font-weight: 600; font-size: 1rem; margin-bottom: 10px;
           border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }}
+        .card-title-divider {{ border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 10px; }}
         .rec-master {{ background: #f8fafc; border-left: 4px solid #2563eb; border-radius: 10px;
           padding: 14px; margin-bottom: 12px; }}
         .rec-alt {{ background: white; border-left: 4px solid #e5e7eb; border-radius: 10px;
@@ -319,7 +320,7 @@ app_ui = ui.page_fluid(
     ),
     ui.div(
         ui.div(
-            ui.h5("Prediction Map", class_="mb-2"),
+            ui.h5("Prediction Map", class_="card-title-divider mb-0"),
             ui.p(
                 "Hubs colored by AI prediction insights for in-transit shipments.",
                 class_="text-muted small mb-2",
@@ -353,7 +354,7 @@ app_ui = ui.page_fluid(
     # Single Supply Chain Optimization card (LHS + RHS divided)
     ui.div(
         ui.div(
-            ui.h5("Supply Chain Optimization", class_="mb-0"),
+            ui.h5("Supply Chain Optimization", class_="card-title-divider mb-0"),
             ui.p(
                 "Get AI-powered recommendations to improve your supply chain based on delivered shipment data."
             ),
@@ -371,7 +372,7 @@ app_ui = ui.page_fluid(
                     ui.panel_conditional(
                         "input.opt_insights_ready === 'yes'",
                         ui.div(
-                        ui.h5("Parameter Simulation", class_="h6 mb-2"),
+                        ui.h5("Parameter Simulation", class_="h6 card-title-divider mb-0"),
                         ui.h6("Parameters to simulate", class_="mt-2 mb-1"),
                         ui.div(ui.output_ui("sim_param_chips"), id="sim-params-source", class_="sim-draggable-source mb-2"),
                         ui.h6("Selected parameters", class_="mt-2 mb-1"),
@@ -818,7 +819,7 @@ def server(input: Inputs, output: Outputs, session: Session):
             ui.div(
                 ui.div(
                     ui.div(
-                        ui.h5("Delivery Health", class_="mb-0"),
+                        ui.h5("Delivery Health", class_="card-title-divider mb-0"),
                         ui.input_action_button("rerun", "Re-run Analysis", class_="btn btn-outline-secondary btn-sm"),
                         class_="d-flex align-items-center justify-content-between mb-2",
                     ),
@@ -830,7 +831,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ),
                 ui.div(
                     ui.div(
-                        ui.h5("Needs Attention", class_="mb-0"),
+                        ui.h5("Needs Attention", class_="card-title-divider mb-0"),
                         ui.tags.button(
                             view_esc_label,
                             type="button",
