@@ -237,28 +237,6 @@ app_ui = ui.page_fluid(
         ui.div(
             # LHS column (with vertical divider)
             ui.div(
-                ui.input_select(
-                    "opt_date_range",
-                    "Date range",
-                    choices={
-                        "yesterday": "Yesterday",
-                        "week": "Past week",
-                        "month": "Past month",
-                        "year": "Past year",
-                        "custom": "Custom",
-                    },
-                    selected="year",
-                ),
-                ui.panel_conditional(
-                    "input.opt_date_range === 'custom'",
-                    ui.input_date_range(
-                        "opt_custom_dates",
-                        "Custom date range",
-                        start=_default_start,
-                        end=_default_end,
-                    ),
-                ),
-                ui.input_action_button("opt_get_insights", "Get Supply Chain Insights", class_="btn-primary mt-2"),
                 ui.output_ui("opt_status"),
                 ui.output_ui("opt_results"),
                 class_="col-lg-6 border-end pe-4",
