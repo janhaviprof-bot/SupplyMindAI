@@ -167,7 +167,44 @@ def _condense_reason(text: str, max_len: int = 95) -> str:
     return (out[0].upper() + out[1:]).rstrip(".,") + "." if out and len(out) > 1 else "Requires attention."
 
 
+# SupplyMind palette (coloupallet.md) - UI only, not maps/charts/graphs
+_PALETTE = {
+    "primary": "#0d6efd",
+    "primary_light": "#4dabf7",
+    "primary_dark": "#0958d9",
+    "cyan": "#22b8cf",
+    "cyan_light": "#63e6e2",
+    "dark_blue": "#1e3a5f",
+    "charcoal": "#212529",
+    "gray": "#6c757d",
+    "light_gray": "#e9ecef",
+    "off_white": "#f8fafc",
+    "white": "#ffffff",
+    "success": "#198754",
+    "warning": "#ffc107",
+    "danger": "#dc3545",
+}
+
 app_ui = ui.page_fluid(
+    ui.tags.style(
+        f"""
+        body {{ background-color: {_PALETTE["off_white"]}; }}
+        .container-fluid {{ background-color: {_PALETTE["off_white"]}; }}
+        .card {{ background-color: {_PALETTE["white"]}; border-color: {_PALETTE["light_gray"]}; }}
+        .card-header {{ border-color: {_PALETTE["light_gray"]}; color: {_PALETTE["dark_blue"]}; }}
+        h5, h6 {{ color: {_PALETTE["dark_blue"]}; }}
+        .btn-primary {{ background-color: {_PALETTE["primary"]}; border-color: {_PALETTE["primary"]}; }}
+        .btn-primary:hover {{ background-color: {_PALETTE["primary_dark"]}; border-color: {_PALETTE["primary_dark"]}; }}
+        .btn-outline-secondary {{ color: {_PALETTE["primary"]}; border-color: {_PALETTE["primary"]}; }}
+        .btn-outline-secondary:hover {{ background-color: {_PALETTE["primary"]}; color: {_PALETTE["white"]}; }}
+        .text-primary {{ color: {_PALETTE["primary"]} !important; }}
+        .border-primary {{ border-color: {_PALETTE["primary"]} !important; }}
+        .text-secondary {{ color: {_PALETTE["gray"]} !important; }}
+        .border-secondary {{ border-color: {_PALETTE["cyan"]} !important; }}
+        .alert-info {{ background-color: rgba(34, 184, 207, 0.15); border-color: {_PALETTE["cyan"]}; color: {_PALETTE["dark_blue"]}; }}
+        .bg-light {{ background-color: {_PALETTE["off_white"]} !important; }}
+        """
+    ),
     ui.tags.header(
         ui.div(
             ui.div(
@@ -180,11 +217,11 @@ app_ui = ui.page_fluid(
                 style="flex-shrink: 0; margin-right: 1rem; width: 128px; height: 128px;",
             ),
             ui.div(
-                ui.span("Supply Mind AI", class_="fw-bold d-block", style="font-size: 1.25rem; letter-spacing: -0.02em; color: #212529; line-height: 1.3;"),
+                ui.span("Supply Mind AI", class_="fw-bold d-block", style=f"font-size: 1.25rem; letter-spacing: -0.02em; color: {_PALETTE['dark_blue']}; line-height: 1.3;"),
                 ui.p(
                     "AI-powered shipment intelligence. Track in-transit deliveries, predict delays, and optimize your supply chain in one dashboard.",
                     class_="mb-0 mt-0.5",
-                    style="font-size: 0.8rem; line-height: 1.35; color: #6c757d;",
+                    style=f"font-size: 0.8rem; line-height: 1.35; color: {_PALETTE['gray']};",
                 ),
                 class_="flex-grow-1 d-flex flex-column justify-content-center",
                 style="min-width: 0; height: 128px;",
@@ -193,7 +230,7 @@ app_ui = ui.page_fluid(
             style="padding: 0.4rem 1rem; min-height: 0; justify-content: flex-start; align-items: center;",
         ),
         class_="py-1",
-        style="border-bottom: 1px solid #e9ecef; background: #fff;",
+        style=f"border-bottom: 1px solid {_PALETTE['light_gray']}; background: {_PALETTE['white']};",
     ),
     ui.output_ui("status"),
     ui.output_ui("results"),
@@ -348,15 +385,15 @@ app_ui = ui.page_fluid(
             """
         ),
         ui.tags.style(
-            """
-            .sim-drop-zone { min-height: 48px; transition: background 0.15s; }
-            .sim-drop-zone.sim-drag-over { background: rgba(13, 110, 253, 0.08); border-color: #0d6efd !important; }
-            .sim-draggable-param { cursor: pointer; user-select: none; }
-            .sim-draggable-param:active { cursor: grabbing; }
-            .sim-chart-wrap { width: 100%; max-width: 100%; min-width: 300px; min-height: 420px; }
-            .sim-results-row { display: flex; align-items: stretch; flex-wrap: nowrap; gap: 0.5rem; }
-            .sim-results-row > .sim-results-chart { flex: 2 1 0%; min-width: 0; }
-            .sim-results-row > .sim-results-rec { flex: 1 1 0%; min-width: 0; min-height: 420px; }
+            f"""
+            .sim-drop-zone {{ min-height: 48px; transition: background 0.15s; }}
+            .sim-drop-zone.sim-drag-over {{ background: rgba(13, 110, 253, 0.08); border-color: {_PALETTE["primary"]} !important; }}
+            .sim-draggable-param {{ cursor: pointer; user-select: none; }}
+            .sim-draggable-param:active {{ cursor: grabbing; }}
+            .sim-chart-wrap {{ width: 100%; max-width: 100%; min-width: 300px; min-height: 420px; }}
+            .sim-results-row {{ display: flex; align-items: stretch; flex-wrap: nowrap; gap: 0.5rem; }}
+            .sim-results-row > .sim-results-chart {{ flex: 2 1 0%; min-width: 0; }}
+            .sim-results-row > .sim-results-rec {{ flex: 1 1 0%; min-width: 0; min-height: 420px; }}
             """
         ),
         class_="card p-4 mt-3",
@@ -727,7 +764,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                         style="flex: 1; min-height: 120px; max-height: 200px;",
                     ),
                     class_="p-3 d-flex flex-column",
-                    style="flex: 1; min-width: 0; border-left: 1px solid var(--bs-border-color);",
+                    style=f"flex: 1; min-width: 0; border-left: 1px solid {_PALETTE['light_gray']};",
                 ),
                 class_="d-flex gap-0",
                 style="width: 100%;",
