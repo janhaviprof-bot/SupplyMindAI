@@ -283,11 +283,29 @@ def _status_donut_with_confidence(on_time: int, delayed: int, critical: int, ins
     return fig
 
 
+def _cached_result_from_db():
+    """Load counts from existing insights (instant, no OpenAI)."""
+    try:
+        insights = get_all_insights()
+    except Exception:
+        return {"on_time": 0, "delayed": 0, "critical": 0}
+    on_time = sum(1 for r in insights if (r.get("flag_status") or "").lower() == "on time")
+    delayed = sum(1 for r in insights if (r.get("flag_status") or "").lower() == "delayed")
+    critical = sum(1 for r in insights if (r.get("flag_status") or "").lower() == "critical")
+    return {"on_time": on_time, "delayed": delayed, "critical": critical, "insights_written": insights}
+
+
 def server(input: Inputs, output: Outputs, session: Session):
-    should_run = reactive.value(True)
+    should_run = reactive.value(False)  # Don't run analysis on load
     analysis_result = reactive.value(None)
     is_loading = reactive.value(False)
     escalated_ids = reactive.value(set())
+
+    @reactive.effect
+    def load_cached_on_start():
+        """Show cached insights immediately for fast load."""
+        if analysis_result() is None:
+            analysis_result.set(_cached_result_from_db())
 
     @reactive.effect
     @reactive.event(input.rerun)
