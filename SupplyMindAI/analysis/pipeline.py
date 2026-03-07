@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from db.supabase_client import execute_query, get_connection
@@ -172,6 +172,51 @@ def _fetch_future_hubs_and_risks(shipment_ids: list[str], current_stop_index_by_
     return result
 
 
+def _confidence_score(conf_raw, payload: dict, flag: str) -> int:
+    """
+    AI confidence 1-10: use model output if valid, else heuristic from data clarity.
+    High = clear signals (all on time + no risks, or clear delays + high risks).
+    Low = mixed/ambiguous data.
+    """
+    try:
+        c = int(conf_raw)
+        if 1 <= c <= 10:
+            return c
+    except (TypeError, ValueError):
+        pass
+    # Heuristic from payload
+    stops = payload.get("stops", [])
+    future_hubs = payload.get("future_hubs", [])
+    future_risks = payload.get("future_risks", [])
+    current_idx = payload.get("current_stop_index") or 0
+    score = 5
+    past_on_time = True
+    for s in stops:
+        if (s.get("stop_number") or 0) <= current_idx:
+            if s.get("actual_arrival") and s.get("planned_arrival"):
+                try:
+                    a = datetime.fromisoformat(str(s["actual_arrival"]).replace("Z", "+00:00"))
+                    p = datetime.fromisoformat(str(s["planned_arrival"]).replace("Z", "+00:00"))
+                    if a > p:
+                        past_on_time = False
+                        break
+                except Exception:
+                    past_on_time = False
+    all_open = all((h.get("status") or "").lower() == "open" for h in future_hubs)
+    max_sev = max((r.get("severity") or 0) for r in future_risks) if future_risks else 0
+    if flag == "On Time":
+        if past_on_time and all_open and max_sev <= 4:
+            score = 8
+        elif not past_on_time or max_sev >= 7:
+            score = 4
+    else:
+        if not past_on_time or max_sev >= 7:
+            score = 8
+        elif all_open and max_sev <= 3:
+            score = 4
+    return max(1, min(10, score))
+
+
 def _build_shipment_payload(shipment: dict, stops: list, future_data: dict) -> dict:
     """Build a JSON-serializable payload for OpenAI."""
     stops_ser = []
@@ -199,16 +244,23 @@ def _call_openai(client, payload: dict) -> dict:
     """Single OpenAI call: flag, predicted_arrival, and reasoning."""
     prompt = """You are a logistics analyst. Given the shipment data below, determine:
 - flag: "On Time" | "Delayed" | "Critical" (Critical = high-priority parcel that will be delayed)
-- predicted_arrival: ISO8601 timestamp or null
-- reasoning: 1-2 short sentences explaining why (for Delayed/Critical) or "On track" (for On Time)
+- predicted_arrival: ISO8601 timestamp. REQUIRED for Delayed and Critical. For Delayed/Critical: predicted_arrival MUST be AFTER final_deadline (delays push arrival later than target). Use est_delay_hrs from risks and past delays to estimate. Use null only for On Time.
+- reasoning: Use this EXACT format for Delayed/Critical. 1–2 sentences. Risk words lowercase: congestion, traffic, bad weather, labor. No severity or priority numbers. Use commas for 3+ items: "traffic, labor, and bad weather".
+  Format: "Delays at [hub(s)] due to [risks]." Optional: "Additional delays at [hub] from [risks]."
+  Do NOT add "The predicted arrival is after the final deadline" or similar—that is obvious. Be SPECIFIC to this shipment: use the exact hub names and risk types from the payload (future_hubs, future_risks). Different shipments must have different reasoning.
+  Examples:
+  - "Delays at Detroit-Midwest due to congestion and bad weather."
+  - "Delays at Chicago-Main and Detroit-Midwest due to traffic, labor, and bad weather."
 
 Classification rules:
 - On Time: Use when (a) all past stops show actual_arrival/actual_departure on or before planned times, AND (b) future hubs are Open (not Congested/Closed), AND (c) future hubs have no high-severity risks (severity <= 4) or no risks at all. Do not flag Delayed/Critical just because some low-severity risks exist; weigh past performance and hub status.
+- CRITICAL: For Delayed or Critical, predicted_arrival must be LATER than final_deadline—delays mean the shipment arrives after the target. Use est_delay_hrs from risks to add delay.
 - Delayed: Use when there are clear delays (past stops late) or future hubs Congested/Closed or high-severity risks (severity >= 7) that will likely cause delay.
 - Critical: ONLY when priority_level >= 8 in the shipment data. If priority_level < 8, you MUST use Delayed, never Critical.
 
+Also include: confidence (1-10, how confident you are in this classification based on data clarity).
 Respond with ONLY this JSON, no markdown:
-{"flag": "On Time"|"Delayed"|"Critical", "predicted_arrival": "ISO8601 or null", "reasoning": "brief text"}
+{"flag": "On Time"|"Delayed"|"Critical", "predicted_arrival": "ISO8601 or null (required for Delayed/Critical)", "reasoning": "1-2 detailed sentences", "confidence": 1-10}
 
 Shipment data:
 """
@@ -225,12 +277,14 @@ Shipment data:
 
 
 def get_all_insights() -> list[dict]:
-    """Fetch all insights from the database for display."""
+    """Fetch all insights with shipment final_deadline for display."""
     rows = execute_query(
         """
-        SELECT insight_id, shipment_id, flag_status, predicted_arrival, reasoning
-        FROM insights
-        ORDER BY shipment_id
+        SELECT i.insight_id, i.shipment_id, i.flag_status, i.predicted_arrival, i.reasoning,
+               s.final_deadline
+        FROM insights i
+        LEFT JOIN shipments s ON s.shipment_id = i.shipment_id
+        ORDER BY i.shipment_id
         """
     )
     return [dict(r) for r in rows]
@@ -316,13 +370,26 @@ def run_analysis() -> dict:
                     pred_arr_dt = datetime.fromisoformat(pred_arr.replace("Z", "+00:00"))
                 except Exception:
                     pred_arr_dt = None
+            # For Delayed/Critical: predicted_arrival must be after final_deadline (delays = later arrival)
+            final_dl = shipment.get("final_deadline")
+            if flag in ("Delayed", "Critical") and pred_arr_dt and final_dl:
+                try:
+                    fd = final_dl if isinstance(final_dl, datetime) else datetime.fromisoformat(str(final_dl).replace("Z", "+00:00"))
+                    if pred_arr_dt <= fd:
+                        pred_arr_dt = fd + timedelta(hours=24)
+                        pred_arr_str = pred_arr_dt.isoformat()
+                except Exception:
+                    pass
             reasoning = result.get("reasoning") or None
+            conf_raw = result.get("confidence")
+            conf = _confidence_score(conf_raw, payload, flag)
             _upsert_insight(sid, flag, pred_arr_dt, reasoning)
             return {
                 "shipment_id": sid,
                 "flag_status": flag,
                 "predicted_arrival": pred_arr_str or (pred_arr_dt.isoformat() if pred_arr_dt else None),
                 "reasoning": reasoning or "-",
+                "confidence": conf,
             }, flag
 
         # Run in parallel (15 workers)
