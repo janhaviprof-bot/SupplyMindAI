@@ -227,7 +227,6 @@ app_ui = ui.page_fluid(
         class_="offcanvas offcanvas-end",
         tabindex="-1",
     ),
-    ui.hr(),
     # Single Supply Chain Optimization card (LHS + RHS divided)
     ui.div(
         ui.h5("Supply Chain Optimization", class_="mb-0"),
