@@ -7,6 +7,22 @@ from typing import Any
 
 ALPHA = 3.0  # Congestion delay coefficient (hours per 100% overflow)
 
+# Cost model: (lever_value - value_min) -> USD investment
+COST_PER_UNIT_USD = {
+    "hub_capacity": 1_000_000,       # $1M per 1.0 capacity multiplier (1.0→2.0 = $1M)
+    "dispatch_time_at_hub": 500_000,  # $500K per 100% dwell reduction
+    "transit_mode": 1_600_000,        # $1.6M per 100% (range 0–50% → $800K max)
+    "earlier_dispatch": 2_000,        # $2K per hour earlier dispatch
+    "risk_based_buffer": 200_000,     # $200K per 1.0 buffer factor
+}
+
+
+def lever_value_to_usd(param_type: str, lever_value: float, value_min: float) -> float:
+    """Convert lever value (above minimum) to approximate USD investment."""
+    cost = COST_PER_UNIT_USD.get(param_type, 10_000)
+    delta = max(0.0, lever_value - value_min)
+    return delta * cost
+
 
 def _parse_iso(s: str | None):
     """Parse ISO datetime string to datetime."""
@@ -179,7 +195,7 @@ def find_sweet_spot(
     Grid search for sweet spot.
     objective: "roi" = max recovered per unit investment (min investment, good results);
                "on_time" = max on-time count; "avg_delay" = min avg delay.
-    Returns {sweet_spot_value, curve: [(v, on_time, delayed, avg_delay), ...], best_metrics}.
+    Returns {sweet_spot_value, curve, best_metrics, chart_points_3: [(investment, on_time, label), ...]}.
     """
     if steps <= 1:
         values = [value_min]
@@ -218,8 +234,27 @@ def find_sweet_spot(
         on_time_raw, delayed_raw, param_type, target_hub, target_route, best_v
     )
 
+    # Build chart_points_3: (investment_usd, on_time_count, label) for Min, Sweet spot, Max
+    v_min, on_min, _, _ = curve[0]
+    v_max, on_max, _, _ = curve[-1]
+    inv_usd_min = lever_value_to_usd(param_type, v_min, value_min)
+    inv_usd_sweet = lever_value_to_usd(param_type, best_v, value_min)
+    inv_usd_max = lever_value_to_usd(param_type, v_max, value_min)
+    chart_points_3 = [
+        (round(inv_usd_min, 0), on_min, "Min"),
+        (round(inv_usd_sweet, 0), best_on, "Sweet spot"),
+        (round(inv_usd_max, 0), on_max, "Max"),
+    ]
+
+    # Curve with investment_usd for each point
+    curve_with_usd = []
+    for v, on_time, delayed, avg_delay in curve:
+        inv_usd = lever_value_to_usd(param_type, v, value_min)
+        curve_with_usd.append((round(v, 2), round(inv_usd, 0), on_time, delayed, round(avg_delay, 2)))
+
     return {
         "sweet_spot_value": round(best_v, 2),
-        "curve": [(round(v, 2), on_time, delayed, round(avg_delay, 2)) for v, on_time, delayed, avg_delay in curve],
+        "curve": curve_with_usd,
         "best_metrics": best_metrics,
+        "chart_points_3": chart_points_3,
     }

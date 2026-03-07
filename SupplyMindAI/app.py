@@ -25,7 +25,7 @@ from analysis.optimization_pipeline import (
     run_optimization_insights_with_data,
     parse_recommendation_to_sim_param,
 )
-from analysis.simulation import find_sweet_spot
+from analysis.simulation import find_sweet_spot, lever_value_to_usd
 # -----------------------------------------------------------------------------
 # TEMPORARY: Feature 1 run-on-load toggle. Set False to skip analysis when app opens.
 # Remove this block before push — restore "Runs automatically on load" behavior.
@@ -199,54 +199,83 @@ app_ui = ui.page_fluid(
         tabindex="-1",
     ),
     ui.hr(),
-    # Optimization card
+    # Single Supply Chain Optimization card (LHS + RHS divided)
     ui.div(
         ui.h4("Supply Chain Optimization"),
         ui.p(
             "Get AI-powered recommendations to improve your supply chain based on delivered shipment data."
         ),
-        ui.input_select(
-            "opt_date_range",
-            "Date range",
-            choices={
-                "yesterday": "Yesterday",
-                "week": "Past week",
-                "month": "Past month",
-                "year": "Past year",
-                "custom": "Custom",
-            },
-            selected="year",
-        ),
-        ui.panel_conditional(
-            "input.opt_date_range === 'custom'",
-            ui.input_date_range(
-                "opt_custom_dates",
-                "Custom date range",
-                start=_default_start,
-                end=_default_end,
-            ),
-        ),
-        ui.input_action_button("opt_get_insights", "Get Supply Chain Insights", class_="btn-primary mt-2"),
-        ui.output_ui("opt_status"),
-        ui.output_ui("opt_results"),
-        class_="card p-4 mt-3",
-    ),
-    # Simulation card
-    ui.div(
-        ui.h4("Parameter Simulation"),
-        ui.p("Drag a parameter from the list below and drop it into the selected slot. Only one parameter at a time."),
-        ui.h6("Parameters to simulate", class_="mt-3"),
-        ui.div(ui.output_ui("sim_param_chips"), id="sim-params-source", class_="sim-draggable-source mb-2"),
-        ui.h6("Selected parameter", class_="mt-3"),
         ui.div(
-            ui.output_ui("sim_selected_display"),
-            id="sim-drop-zone",
-            class_="sim-drop-zone border border-2 border-dashed rounded p-3 mb-2",
+            # LHS column (with vertical divider)
+            ui.div(
+                ui.input_select(
+                    "opt_date_range",
+                    "Date range",
+                    choices={
+                        "yesterday": "Yesterday",
+                        "week": "Past week",
+                        "month": "Past month",
+                        "year": "Past year",
+                        "custom": "Custom",
+                    },
+                    selected="year",
+                ),
+                ui.panel_conditional(
+                    "input.opt_date_range === 'custom'",
+                    ui.input_date_range(
+                        "opt_custom_dates",
+                        "Custom date range",
+                        start=_default_start,
+                        end=_default_end,
+                    ),
+                ),
+                ui.input_action_button("opt_get_insights", "Get Supply Chain Insights", class_="btn-primary mt-2"),
+                ui.output_ui("opt_status"),
+                ui.output_ui("opt_results"),
+                class_="col-lg-6 border-end pe-4",
+            ),
+            # RHS column: Parameter Simulation
+            ui.div(
+                ui.h5("Parameter Simulation", class_="h6 mb-2"),
+                ui.p("Click a parameter to select. Run simulation to see results.", class_="small text-muted mb-2"),
+                ui.h6("Parameters to simulate", class_="mt-2 mb-1"),
+                ui.div(ui.output_ui("sim_param_chips"), id="sim-params-source", class_="sim-draggable-source mb-2"),
+                ui.h6("Selected parameters", class_="mt-2 mb-1"),
+                ui.div(
+                    ui.span("Click a parameter above to select", class_="text-muted"),
+                    id="sim-selected-zone",
+                    class_="sim-drop-zone border border-2 border-dashed rounded p-3 mb-2",
+                ),
+                ui.div(ui.input_text("sim_selected_param", "", value=""), class_="d-none"),
+                ui.p("Sweet spot = best ROI. Run simulation to compare parameters.", class_="small text-muted mt-3 mb-0"),
+                ui.h6("Configure & run", class_="mt-2 mb-1"),
+                ui.output_ui("sim_config"),
+                ui.input_action_button("sim_run", "Run simulation", class_="btn-primary mt-2"),
+                class_="col-lg-6 ps-4",
+            ),
+            class_="row",
         ),
-        ui.div(ui.input_text("sim_selected_param", "", value=""), class_="d-none"),
         ui.tags.script(
             """
             (function() {
+              var selected = [];
+              var MAX = 5;
+              function updateZone() {
+                var z = document.getElementById('sim-selected-zone');
+                if (!z) return;
+                if (selected.length === 0) {
+                  z.innerHTML = '<span class="text-muted">Click a parameter above to select</span>';
+                } else {
+                  var html = selected.map(function(p) {
+                    var lab = p.length > 45 ? p.substring(0,45)+'...' : p;
+                    return '<span class="badge bg-success me-1 mb-1">'+lab+'</span> <a href="#" class="sim-clear-one small text-muted" data-p="'+p.replace(/"/g,'&quot;')+'">(x)</a> ';
+                  }).join('') + '<a href="#" class="sim-clear-link small ms-1">Clear all</a>';
+                  z.innerHTML = html;
+                }
+                if (typeof Shiny !== 'undefined' && Shiny.setInputValue) {
+                  Shiny.setInputValue('sim_selected_param', selected.join('|||'), {priority: 'event'});
+                }
+              }
               document.addEventListener('DOMContentLoaded', function() {
                 document.addEventListener('dragstart', function(e) {
                   var t = e.target;
@@ -261,7 +290,7 @@ app_ui = ui.page_fluid(
                     e.target.style.opacity = '1';
                   }
                 });
-                var dz = document.getElementById('sim-drop-zone');
+                var dz = document.getElementById('sim-selected-zone');
                 if (dz) {
                   dz.addEventListener('dragover', function(e) {
                     e.preventDefault();
@@ -277,17 +306,29 @@ app_ui = ui.page_fluid(
                     e.stopPropagation();
                     dz.classList.remove('sim-drag-over');
                     var param = e.dataTransfer.getData('text/plain');
-                    if (param && typeof Shiny !== 'undefined' && Shiny.setInputValue) {
-                      Shiny.setInputValue('sim_selected_param', param, {priority: 'event'});
+                    if (param && selected.indexOf(param)===-1 && selected.length < MAX) {
+                      selected.push(param);
+                      updateZone();
                     }
                   });
                 }
                 document.addEventListener('click', function(e) {
-                  if (e.target && e.target.classList && e.target.classList.contains('sim-clear-link')) {
+                  var t = e.target;
+                  if (t && t.classList && t.classList.contains('sim-draggable-param') && t.dataset && t.dataset.param) {
                     e.preventDefault();
-                    if (typeof Shiny !== 'undefined' && Shiny.setInputValue) {
-                      Shiny.setInputValue('sim_selected_param', '', {priority: 'event'});
-                    }
+                    var p = t.dataset.param;
+                    var i = selected.indexOf(p);
+                    if (i >= 0) selected.splice(i,1);
+                    else if (selected.length < MAX) selected.push(p);
+                    updateZone();
+                  } else if (t && t.classList && t.classList.contains('sim-clear-link')) {
+                    e.preventDefault();
+                    selected = [];
+                    updateZone();
+                  } else if (t && t.classList && t.classList.contains('sim-clear-one') && t.dataset && t.dataset.p) {
+                    e.preventDefault();
+                    var idx = selected.indexOf(t.dataset.p);
+                    if (idx >= 0) { selected.splice(idx,1); updateZone(); }
                   }
                 });
               });
@@ -298,19 +339,17 @@ app_ui = ui.page_fluid(
             """
             .sim-drop-zone { min-height: 48px; transition: background 0.15s; }
             .sim-drop-zone.sim-drag-over { background: rgba(13, 110, 253, 0.08); border-color: #0d6efd !important; }
-            .sim-draggable-param { cursor: grab; user-select: none; }
+            .sim-draggable-param { cursor: pointer; user-select: none; }
             .sim-draggable-param:active { cursor: grabbing; }
+            .sim-chart-wrap { width: 100%; max-width: 100%; min-width: 300px; min-height: 420px; }
+            .sim-results-row { display: flex; align-items: stretch; flex-wrap: nowrap; gap: 1rem; }
+            .sim-results-row > .sim-results-chart { flex: 0 0 66.666667%; max-width: 66.666667%; min-width: 0; }
+            .sim-results-row > .sim-results-rec { flex: 1; min-width: 0; min-height: 420px; }
             """
         ),
-        ui.p("Sweet spot = best ROI: maximum recovered shipments per unit investment.", class_="small text-muted mt-2 mb-0"),
-        ui.h6("Configure & run", class_="mt-3"),
-        ui.output_ui("sim_config"),
-        ui.input_action_button("sim_run", "Run simulation", class_="btn-primary mt-2"),
-        ui.output_ui("sim_status"),
-        ui.output_ui("sim_results"),
-        output_widget("sim_chart"),
         class_="card p-4 mt-3",
     ),
+    ui.output_ui("sim_results_card"),
 )
 
 
@@ -818,11 +857,12 @@ def server(input: Inputs, output: Outputs, session: Session):
     sim_loading = reactive.value(False)
 
     def _sim_selected() -> list:
-        """Single selection: returns [label] or []."""
+        """Returns selected param labels (up to 5)."""
         val = input.sim_selected_param()
-        if val and isinstance(val, str) and val.strip():
-            return [val.strip()]
-        return []
+        if not val or not isinstance(val, str):
+            return []
+        parts = [p.strip() for p in val.split("|||") if p.strip()]
+        return parts[:5]
 
     @render.ui
     def sim_param_chips():
@@ -832,58 +872,32 @@ def server(input: Inputs, output: Outputs, session: Session):
         control = r.get("control_parameters", []) or []
         top = [tp.get("label", "") for tp in (r.get("top_parameters") or []) if tp.get("label")]
         all_labels = list(dict.fromkeys(control + top))
-        if not all_labels:
-            return ui.span("No parameters from insights yet.", class_="text-muted")
+        simulatable = [lb for lb in all_labels if parse_recommendation_to_sim_param(lb)]
+        if not simulatable:
+            return ui.span("No simulatable parameters from insights.", class_="text-muted")
         chips = []
-        for lb in all_labels:
-            parsed = parse_recommendation_to_sim_param(lb)
+        for lb in simulatable[:5]:
             label_short = lb[:50] + ("..." if len(lb) > 50 else "")
-            if parsed:
-                chips.append(
-                    ui.tags.span(
-                        label_short,
-                        class_="badge bg-primary me-1 mb-1 sim-draggable-param",
-                        draggable="true",
-                        data_param=lb,
-                    )
+            chips.append(
+                ui.tags.span(
+                    label_short,
+                    class_="badge bg-primary me-1 mb-1 sim-draggable-param",
+                    draggable="true",
+                    data_param=lb,
                 )
-            else:
-                chips.append(
-                    ui.tags.span(
-                        label_short + " (cannot simulate)",
-                        class_="badge bg-secondary me-1 mb-1",
-                    )
-                )
+            )
         return ui.div(*chips, class_="mb-0")
-
-    @render.ui
-    def sim_selected_display():
-        val = input.sim_selected_param()
-        if not val or not str(val).strip():
-            return ui.span("Drop parameter here", class_="text-muted")
-        lb = str(val).strip()
-        return ui.div(
-            ui.tags.span(lb[:60] + ("..." if len(lb) > 60 else ""), class_="badge bg-success"),
-            ui.tags.a(" (clear)", href="#", class_="ms-1 small text-muted sim-clear-link"),
-        )
 
     @render.ui
     def sim_config():
         sel = _sim_selected()
         if not sel:
-            return ui.span("Select at least one parameter above.", class_="text-muted")
-        # Build config for first selected (or we could let user pick; use first for simplicity)
-        label = sel[0]
-        parsed = parse_recommendation_to_sim_param(label)
-        if not parsed:
-            return ui.span("Selected parameter cannot be simulated.", class_="text-muted")
-        ptype = parsed.get("type", "")
-        target_hub = parsed.get("target_hub")
-        target_route = parsed.get("target_route")
-
-        return ui.TagList(
-            ui.p(f"Simulating: {label}", class_="small text-muted"),
-            ui.p(f"Type: {ptype}" + (f" | Hub: {target_hub}" if target_hub else ""), class_="small"),
+            return ui.span("Select one or more parameters above, or leave empty to simulate top 5.", class_="text-muted")
+        labels = sel[:5]
+        labels_short = [l[:40] + ("..." if len(l) > 40 else "") for l in labels]
+        return ui.p(
+            "Simulating: " + ", ".join(labels_short),
+            class_="small text-muted",
         )
 
     @reactive.effect
@@ -891,21 +905,19 @@ def server(input: Inputs, output: Outputs, session: Session):
     def _on_sim_run():
         r = opt_result()
         sel = _sim_selected()
-        if not r or not sel:
+        on_time = r.get("on_time_raw", []) if r else []
+        delayed = r.get("delayed_raw", []) if r else []
+        if not r or (not on_time and not delayed):
+            sim_result.set({"error": "No raw data. Run Supply Chain Insights first."})
             return
-        on_time = r.get("on_time_raw", [])
-        delayed = r.get("delayed_raw", [])
-        if not on_time and not delayed:
-            sim_result.set({"error": "No raw data from insights. Run Supply Chain Insights first."})
+        control = r.get("control_parameters", []) or []
+        top = [tp.get("label", "") for tp in (r.get("top_parameters") or []) if tp.get("label")]
+        all_labels = list(dict.fromkeys(control + top))
+        simulatable = [lb for lb in all_labels if parse_recommendation_to_sim_param(lb)][:5]
+        params_to_run = sel if sel else simulatable
+        if not params_to_run:
+            sim_result.set({"error": "No simulatable parameters."})
             return
-        label = sel[0]
-        parsed = parse_recommendation_to_sim_param(label)
-        if not parsed:
-            sim_result.set({"error": "Selected parameter cannot be simulated."})
-            return
-        ptype = parsed.get("type", "")
-        target_hub = parsed.get("target_hub")
-        target_route = parsed.get("target_route")
         ranges = {
             "hub_capacity": (1.0, 2.0),
             "dispatch_time_at_hub": (0, 1),
@@ -913,13 +925,35 @@ def server(input: Inputs, output: Outputs, session: Session):
             "earlier_dispatch": (0, 24),
             "risk_based_buffer": (0, 1.5),
         }
-        vmin, vmax = ranges.get(ptype, (0, 1))
+        curves = []
         sim_loading.set(True)
         try:
-            res = find_sweet_spot(on_time, delayed, ptype, target_hub, target_route, vmin, vmax, 11, "roi")
-            res["baseline_on_time"] = len(on_time)
-            res["baseline_delayed"] = len(delayed)
-            sim_result.set(res)
+            for label in params_to_run:
+                parsed = parse_recommendation_to_sim_param(label)
+                if not parsed:
+                    continue
+                ptype = parsed.get("type", "")
+                target_hub = parsed.get("target_hub")
+                target_route = parsed.get("target_route")
+                vmin, vmax = ranges.get(ptype, (0, 1))
+                res = find_sweet_spot(on_time, delayed, ptype, target_hub, target_route, vmin, vmax, 11, "roi")
+                curve_data = res.get("curve", [])
+                pts = res.get("chart_points_3", [])
+                curves.append({
+                    "label": label[:50] + ("..." if len(label) > 50 else ""),
+                    "curve": curve_data,
+                    "chart_points_3": pts,
+                    "sweet_spot_value": res.get("sweet_spot_value"),
+                    "best_metrics": res.get("best_metrics", {}),
+                })
+            if not curves:
+                sim_result.set({"error": "Could not simulate any selected parameter."})
+                return
+            sim_result.set({
+                "curves": curves,
+                "baseline_on_time": len(on_time),
+                "baseline_delayed": len(delayed),
+            })
         except Exception as e:
             sim_result.set({"error": str(e)})
         finally:
@@ -931,33 +965,23 @@ def server(input: Inputs, output: Outputs, session: Session):
             return ui.div(ui.span("Running simulation...", class_="text-muted"), class_="alert alert-info mt-2")
         return None
 
-    @render_widget
-    def sim_chart():
+    @render.ui
+    def sim_results_card():
         res = sim_result()
-        if not res or res.get("error") or not res.get("curve"):
-            fig = go.Figure().add_annotation(
-                text="Run simulation to see chart", x=0.5, y=0.5, showarrow=False, font_size=14
-            )
-            fig.update_layout(height=250, margin=dict(t=30, b=30, l=30, r=30), xaxis=dict(visible=False), yaxis=dict(visible=False))
-            return fig
-        curve = res.get("curve", [])
-        sweet = res.get("sweet_spot_value")
-        vals = [c[0] for c in curve]
-        on_times = [c[1] for c in curve]
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(x=vals, y=on_times, mode="lines+markers", marker=dict(size=6), name="On-time count"))
-        if sweet is not None:
-            idx = min(range(len(vals)), key=lambda i: abs(vals[i] - sweet))
-            fig.add_trace(go.Scatter(x=[vals[idx]], y=[on_times[idx]], mode="markers", marker=dict(size=14, color="gold", symbol="star"), name="Sweet spot"))
-        fig.update_layout(
-            xaxis_title="Value",
-            yaxis_title="On-time count",
-            height=250,
-            margin=dict(t=30, b=40, l=50, r=30),
-            showlegend=True,
-            legend=dict(orientation="h", yanchor="top", y=1.02, xanchor="right", x=1),
+        if res is None:
+            return None
+        return ui.div(
+            ui.div(
+                ui.h5("Simulation result", class_="card-title mb-0"),
+                class_="card-header",
+            ),
+            ui.div(
+                ui.output_ui("sim_status"),
+                ui.output_ui("sim_results"),
+                class_="card-body p-4",
+            ),
+            class_="card border mt-3",
         )
-        return fig
 
     @render.ui
     def sim_results():
@@ -970,37 +994,121 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ui.p(res["error"], class_="text-danger"),
                 class_="alert alert-danger mt-3",
             )
-        sweet = res.get("sweet_spot_value")
-        curve = res.get("curve", [])
-        best = res.get("best_metrics", {})
-        rows = []
-        for v, on_t, dly, avg in curve:
-            mark = " ★" if v == sweet else ""
-            rows.append((v, on_t, dly, avg, mark))
-        table_html = (
-            "<table class='table table-sm table-bordered'><thead><tr>"
-            "<th>Value</th><th>On-time</th><th>Delayed</th><th>Avg delay (hrs)</th><th></th></tr></thead><tbody>"
-        )
-        for v, on_t, dly, avg, mark in rows:
-            table_html += f"<tr><td>{v}</td><td>{on_t}</td><td>{dly}</td><td>{avg}</td><td>{mark}</td></tr>"
-        table_html += "</tbody></table>"
-        base_ot = res.get("baseline_on_time")
-        base_dly = res.get("baseline_delayed")
-        sim_ot = best.get("on_time_count", "-")
-        sim_dly = best.get("delayed_count", "-")
-        recovered = (base_dly - sim_dly) if isinstance(base_dly, int) and isinstance(sim_dly, int) and sim_dly < base_dly else None
-        baseline_str = f"Baseline: {base_ot} on-time, {base_dly} delayed" if base_ot is not None and base_dly is not None else ""
-        sim_str = f"At sweet spot {sweet}: {sim_ot} on-time, {sim_dly} delayed"
-        recovered_str = f" ({recovered} recovered)" if recovered is not None and recovered > 0 else ""
-        return ui.TagList(
-            ui.h6("Results", class_="mt-3"),
-            ui.p(
-                ui.strong(f"{baseline_str} → " if baseline_str else ""),
-                f"{sim_str}{recovered_str} | Avg delay: {best.get('avg_delay', '-')} hrs",
-                class_="small",
+        if not res.get("curves"):
+            return None
+        n_shipments = (res.get("baseline_on_time") or 0) + (res.get("baseline_delayed") or 0)
+        caveat = f"* Analysis based on {n_shipments} shipments. Values reflect simulation results."
+        return ui.div(
+            ui.p(HTML(caveat), class_="text-muted mb-2", style="font-size: 0.75rem;"),
+            ui.div(
+                ui.div(
+                    ui.div(output_widget("sim_chart"), class_="sim-chart-wrap"),
+                    class_="sim-results-chart",
+                ),
+                ui.div(
+                    ui.div(
+                        ui.h6("Recommendations", class_="card-title"),
+                        ui.output_ui("sim_recommendation"),
+                        class_="card-body",
+                    ),
+                    class_="card border sim-results-rec",
+                ),
+                class_="sim-results-row",
             ),
-            ui.div(ui.HTML(table_html), class_="table-responsive mt-2"),
         )
+
+    @render_widget
+    def sim_chart():
+        res = sim_result()
+        if not res or res.get("error") or not res.get("curves"):
+            fig = go.Figure().add_annotation(
+                text="Run simulation to see chart", x=0.5, y=0.5, showarrow=False, font_size=14
+            )
+            fig.update_layout(height=420, margin=dict(t=30, b=30, l=30, r=30), xaxis=dict(visible=False), yaxis=dict(visible=False))
+            return fig
+        fig = go.Figure()
+        colors = ["#0d6efd", "#198754", "#fd7e14", "#6f42c1", "#dc3545"]
+        for i, c in enumerate(res.get("curves", [])):
+            curve = c.get("curve", [])
+            label = c.get("label", f"Case {i+1}")
+            inv_vals = [p[1] for p in curve]
+            on_times = [p[2] for p in curve]
+            color = colors[i % len(colors)]
+            fig.add_trace(go.Scatter(
+                x=inv_vals, y=on_times, mode="lines+markers",
+                marker=dict(size=6, color=color),
+                line=dict(color=color),
+                name=label,
+            ))
+            pts = c.get("chart_points_3", [])
+            if len(pts) >= 2:
+                inv_sweet, on_sweet, _ = pts[1]
+                fig.add_trace(go.Scatter(
+                    x=[inv_sweet], y=[on_sweet], mode="markers",
+                    marker=dict(size=12, color="gold", symbol="star", line=dict(width=1, color="gray")),
+                    name=f"{label} (sweet)",
+                    legendgroup=label,
+                ))
+        fig.update_layout(
+            height=420,
+            autosize=False,
+            xaxis_title="Investment ($)",
+            yaxis_title="On-time count",
+            margin=dict(t=50, b=80, l=55, r=30),
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="top",
+                y=-0.18,
+                xanchor="center",
+                x=0.5,
+                bgcolor="rgba(255,255,255,0.9)",
+                bordercolor="rgba(0,0,0,0.1)",
+                borderwidth=1,
+            ),
+            paper_bgcolor="rgba(248,250,252,0.8)",
+            plot_bgcolor="rgba(255,255,255,0.95)",
+            font=dict(family="Inter, system-ui, sans-serif", size=12),
+            hovermode="x unified",
+        )
+        return fig
+
+    @render.ui
+    def sim_recommendation():
+        res = sim_result()
+        if not res or res.get("error") or not res.get("curves"):
+            return ui.span("Run simulation for recommendations.", class_="text-muted")
+        curves = res.get("curves", [])
+        base_ot = res.get("baseline_on_time", 0)
+        base_dly = res.get("baseline_delayed", 0)
+        parts = []
+        for c in curves:
+            label = c.get("label", "")
+            best = c.get("best_metrics", {})
+            sweet = c.get("sweet_spot_value")
+            pts = c.get("chart_points_3", [])
+            inv_sweet = pts[1][0] if len(pts) >= 2 else 0
+            sim_ot = best.get("on_time_count", base_ot)
+            recovered = sim_ot - base_ot
+            if recovered > 0:
+                parts.append(
+                    ui.p(
+                        ui.strong(label + ": "),
+                        f"Invest ${inv_sweet:,.0f} to recover ~{recovered} shipment(s). ROI favorable.",
+                        class_="mb-2 small",
+                    )
+                )
+            else:
+                parts.append(
+                    ui.p(
+                        ui.strong(label + ": "),
+                        "Limited impact. Consider alternative levers such as earlier dispatch or risk-based buffer.",
+                        class_="mb-2 small text-muted",
+                    )
+                )
+        if not parts:
+            return ui.p("Review chart to compare options.", class_="text-muted small")
+        return ui.div(*parts, class_="small")
 
 
 app = App(app_ui, server)
