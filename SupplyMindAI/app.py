@@ -12,7 +12,7 @@ sys.path.insert(0, str(_root / "SupplyMindAI"))
 
 from shiny import App, Inputs, Outputs, Session, reactive, render, ui
 
-from analysis.pipeline import run_analysis
+from analysis.pipeline import run_analysis, get_all_insights
 
 
 app_ui = ui.page_fluid(
@@ -60,6 +60,21 @@ def server(input: Inputs, output: Outputs, session: Session):
             )
         return None
 
+    def _insights_to_html(rows: list[dict]) -> str:
+        """Build HTML table string from insights rows."""
+        if not rows:
+            return "<p class='text-muted'>No rows.</p>"
+        html = '<table class="table table-sm table-bordered table-striped"><thead><tr>'
+        html += "<th>Shipment ID</th><th>Flag</th><th>Predicted Arrival</th><th>Reasoning</th></tr></thead><tbody>"
+        for r in rows:
+            sid = (r.get("shipment_id") or "").replace("<", "&lt;")
+            flag = (r.get("flag_status") or "").replace("<", "&lt;")
+            pa = str(r.get("predicted_arrival") or "-")[:40].replace("<", "&lt;")
+            reason = str(r.get("reasoning") or "-")[:120].replace("<", "&lt;")
+            html += f"<tr><td>{sid}</td><td>{flag}</td><td>{pa}</td><td>{reason}</td></tr>"
+        html += "</tbody></table>"
+        return html
+
     @render.ui
     def results():
         result = analysis_result()
@@ -72,8 +87,14 @@ def server(input: Inputs, output: Outputs, session: Session):
                 ui.p(err, class_="text-danger"),
                 class_="alert alert-danger mt-3",
             )
-        return ui.div(
-            ui.h4("Results", class_="mt-3"),
+        written = result.get("insights_written", [])
+        all_insights = []
+        try:
+            all_insights = get_all_insights()
+        except Exception:
+            pass
+        return ui.TagList(
+            ui.h4("Summary", class_="mt-3"),
             ui.p(
                 f"On Time: {result.get('on_time', 0)}  |  "
                 f"Delayed: {result.get('delayed', 0)}  |  "
@@ -81,10 +102,13 @@ def server(input: Inputs, output: Outputs, session: Session):
                 class_="lead",
             ),
             ui.p(
-                "Flags and insights have been written to the database.",
+                f"This run wrote {len(written)} insight(s) to the database.",
                 class_="text-muted small",
             ),
-            class_="mt-3",
+            ui.h5("Insights written this run", class_="mt-4"),
+            ui.div(ui.HTML(_insights_to_html(written)), class_="table-responsive"),
+            ui.h5("All insights in database", class_="mt-4"),
+            ui.div(ui.HTML(_insights_to_html(all_insights)), class_="table-responsive"),
         )
 
 
