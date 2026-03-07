@@ -359,15 +359,40 @@ app_ui = ui.page_fluid(
     ),
     ui.div(
         ui.div(
-            ui.h5("Prediction Map", class_="card-title-divider mb-0"),
-            ui.p(
-                "Hubs colored by AI prediction insights for in-transit shipments.",
-                class_="text-muted small mb-2",
+            ui.h5("Prediction Map", class_="card-title-divider mb-2"),
+            ui.div(
+                ui.div(
+                    ui.p(
+                        "See where at-risk shipments are concentrated and where to focus improvements.",
+                        class_="fw-semibold small mb-2",
+                        style="color: #374151;",
+                    ),
+                    ui.div(
+                        ui.p(ui.span("Red hubs:", class_="fw-semibold text-danger"), " High-priority shipments predicted to be delayed", class_="text-muted small mb-1", style="font-size: 0.8rem; line-height: 1.5;"),
+                        ui.p(ui.span("Orange hubs:", class_="fw-semibold text-warning"), " Shipments predicted to arrive late", class_="text-muted small mb-1", style="font-size: 0.8rem; line-height: 1.5;"),
+                        ui.p(ui.span("Black hubs:", class_="fw-semibold"), " All hub locations", class_="text-muted small mb-3", style="font-size: 0.8rem; line-height: 1.5;"),
+                        ui.p("What you can do:", class_="fw-semibold small mb-2", style="color: #374151; font-size: 0.85rem;"),
+                        ui.tags.ol(
+                            ui.tags.li("Focus on red hubs first, then orange.", class_="prediction-map-step mb-2"),
+                            ui.tags.li("Use the map to decide where to add capacity or adjust routing.", class_="prediction-map-step mb-2"),
+                            ui.tags.li("Escalate critical shipments from the Needs Attention panel above.", class_="prediction-map-step mb-2"),
+                            class_="pl-3 mb-2",
+                        ),
+                        ui.p("Hover for exact counts. Drag to pan; scroll to zoom.", class_="text-muted small mb-0", style="font-size: 0.75rem; opacity: 0.9;"),
+                    ),
+                    class_="prediction-map-summary-card p-3",
+                    style="background: #f8fafc; border-radius: 10px; border: 1px solid #e5e7eb;",
+                ),
+                ui.div(
+                    output_widget("hub_map"),
+                    class_="prediction-map-chart-card p-2",
+                    style="background: #fafbfc; border-radius: 10px; border: 1px solid #e5e7eb;",
+                ),
+                class_="prediction-map-two-cards",
             ),
-            output_widget("hub_map"),
-            class_="card card-accent-accent p-3 mt-0",
+            class_="card card-accent-accent p-3 mt-0 mb-0",
         ),
-        class_="section-container",
+        class_="section-container prediction-map-section",
     ),
     ui.div(ui.input_text("escalate_which", label="", value=""), class_="d-none"),
     ui.div(ui.input_text("insight_detail_id", label="", value=""), class_="d-none"),
@@ -487,7 +512,7 @@ app_ui = ui.page_fluid(
                   var html = selected.map(function(p) {
                     var lab = p.length > 45 ? p.substring(0,45)+'...' : p;
                     return '<span class="sim-chip sim-chip-selected">'+lab+'</span> <a href="#" class="sim-clear-one small text-muted ms-1" data-p="'+p.replace(/"/g,'&quot;')+'">(×)</a> ';
-                  }).join('') + '<a href="#" class="sim-clear-link small ms-2">Clear all</a>';
+                  }).join('') + '<span class="sim-clear-row"><a href="#" class="sim-clear-link small">Clear all</a></span>';
                   z.innerHTML = html;
                 }
                 if (typeof Shiny !== 'undefined' && Shiny.setInputValue) {
@@ -555,7 +580,9 @@ app_ui = ui.page_fluid(
         ),
         ui.tags.style(
             f"""
-            .sim-drop-zone.sim-drag-over {{ background: rgba(37, 99, 235, 0.08) !important; border-color: {_PALETTE["primary"]} !important; }}
+            .sim-drop-zone {{ display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }}
+.sim-clear-row {{ flex-basis: 100%; margin-top: 4px; }}
+.sim-drop-zone.sim-drag-over {{ background: rgba(37, 99, 235, 0.08) !important; border-color: {_PALETTE["primary"]} !important; }}
             .sim-draggable-param {{ cursor: pointer; user-select: none; }}
             .sim-draggable-param:active {{ cursor: grabbing; }}
             .sim-section-label {{ font-size: 0.95rem; font-weight: 500; color: #4b5563; }}
@@ -574,6 +601,11 @@ app_ui = ui.page_fluid(
             .param-label {{ font-size: 0.72rem; font-weight: 600; color: #374151; letter-spacing: 0.02em; }}
             .param-desc {{ font-size: 0.78rem; color: #4b5563; line-height: 1.3; }}
             .param-accordion .accordion-button {{ font-size: 0.8rem !important; font-weight: 500 !important; padding: 6px 12px !important; }}
+        .prediction-map-section {{ margin-bottom: 16px !important; }}
+        .prediction-map-two-cards {{ display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }}
+        .prediction-map-step {{ font-size: 0.8rem; line-height: 1.55; color: #4b5563; }}
+        .prediction-map-summary-card {{ flex-shrink: 0; min-width: 0; }}
+        .prediction-map-chart-card {{ min-width: 0; min-height: 360px; }}
             @media (max-width: 991px) {{
               .sim-results-row {{ flex-wrap: wrap; }}
               .sim-results-row > .sim-results-chart {{ flex: 1 1 100%; min-width: 100%; }}
@@ -596,6 +628,7 @@ app_ui = ui.page_fluid(
               h5 {{ font-size: 1.15rem !important; }}
               .d-flex.gap-0 {{ flex-direction: column !important; }}
               .delivery-health-split > div:last-child {{ border-left: none !important; border-top: 1px solid #e5e7eb !important; }}
+              .prediction-map-two-cards {{ grid-template-columns: 1fr !important; }}
             }}
             """
         ),
@@ -1004,27 +1037,49 @@ def server(input: Inputs, output: Outputs, session: Session):
             ui.div(
                 ui.div(
                     ui.div(
-                        ui.h5("Delivery Health", class_="card-title-divider mb-0"),
+                        ui.h5("Current Shipment Delivery Insight", class_="card-title-divider mb-0"),
                         ui.input_action_button("rerun", "Re-run Analysis", class_="btn btn-outline-secondary btn-sm"),
                         class_="d-flex align-items-center justify-content-between mb-2",
                     ),
                     _kpi_cards(on_time, delayed, critical),
                     ui.p("AI confidence", class_="text-muted small mt-2 mb-1", style="font-size: 0.75rem;"),
                     output_widget("donut"),
+                    ui.div(
+                        ui.div(
+                            ui.span("Critical:", class_="fw-semibold text-danger"),
+                            " High-priority shipments predicted to be delayed",
+                            class_="mb-1",
+                        ),
+                        ui.div(
+                            ui.span("Delayed:", class_="fw-semibold text-warning"),
+                            " Shipments predicted to arrive late",
+                            class_="mb-1",
+                        ),
+                        ui.div(
+                            ui.span("On Time:", class_="fw-semibold text-success"),
+                            " Shipments predicted to arrive on time",
+                            class_="mb-0",
+                        ),
+                        class_="text-muted small mt-2 status-legend",
+                        style="font-size: 0.72rem; line-height: 1.6;",
+                    ),
                     class_="p-3",
                     style="flex: 1; min-width: 0;",
                 ),
                 ui.div(
                     ui.div(
-                        ui.h5("Needs Attention", class_="card-title-divider mb-0"),
-                        ui.tags.button(
-                            view_esc_label,
-                            type="button",
-                            class_="btn btn-outline-secondary btn-sm",
-                            data_bs_toggle="offcanvas",
-                            data_bs_target="#escalatedDrawer",
+                        ui.div(
+                            ui.h5("Needs Attention", class_="card-title-divider mb-0"),
+                            ui.tags.button(
+                                view_esc_label,
+                                type="button",
+                                class_="btn btn-outline-secondary btn-sm",
+                                data_bs_toggle="offcanvas",
+                                data_bs_target="#escalatedDrawer",
+                            ),
+                            class_="d-flex align-items-center justify-content-between mb-1",
                         ),
-                        class_="d-flex align-items-center justify-content-between mb-2",
+                        ui.p("Escalate marks shipments for follow-up or team review.", class_="text-muted small mb-2", style="font-size: 0.75rem;"),
                     ),
                     ui.div(
                         *critical_cards if critical_cards else [
@@ -1165,6 +1220,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 )
             )
         dot_size_base = 8
+        dot_size_max = 28
         red = [h for h in status_hubs if h.get("status") == "red"]
         orange = [h for h in status_hubs if h.get("status") == "orange"]
         green = [h for h in status_hubs if h.get("status") == "green"]
@@ -1175,15 +1231,18 @@ def server(input: Inputs, output: Outputs, session: Session):
         ]:
             if not data:
                 continue
-            texts = [
-                f"{h['hub_name']}<br>"
-                + (f"{h.get('in_delayed_count', 0)} shipment(s) flagged" if h.get("in_delayed_count") else "On-time")
-                for h in data
-            ]
-            if color == "#dc3545":
-                sizes = [min(dot_size_base + 2 * (h.get("in_delayed_count") or 0), 16) for h in data]
+            if color == "#ef4444":
+                cnt = [max(h.get("critical_count") or 1, 1) for h in data]
+                sizes = [min(dot_size_base + 4 * c, dot_size_max) for c in cnt]
+                texts = [f"{h['hub_name']}<br>{h.get('critical_count', 0)} critical shipment(s)" for h in data]
+            elif color == "#f59e0b":
+                cnt = [max(h.get("delayed_count") or 1, 1) for h in data]
+                sizes = [min(dot_size_base + 3 * c, dot_size_max) for c in cnt]
+                texts = [f"{h['hub_name']}<br>{h.get('delayed_count', 0)} delayed shipment(s)" for h in data]
             else:
-                sizes = [dot_size_base] * len(data)
+                cnt = [max(h.get("on_time_count") or 1, 1) for h in data]
+                sizes = [min(6 + min(c, 4), 14) for c in cnt]
+                texts = [f"{h['hub_name']}<br>{h.get('on_time_count', 0)} on-time shipment(s)" for h in data]
             fig.add_trace(
                 go.Scattergeo(
                     lat=[h["lat"] for h in data],
@@ -1203,8 +1262,8 @@ def server(input: Inputs, output: Outputs, session: Session):
             projection_type="albers usa",
         )
         fig.update_layout(
-            height=400,
-            margin=dict(t=10, b=10, l=10, r=10),
+            height=380,
+            margin=dict(t=4, b=4, l=4, r=4),
             autosize=True,
             showlegend=True,
             paper_bgcolor="rgba(0,0,0,0)",
@@ -1435,6 +1494,12 @@ def server(input: Inputs, output: Outputs, session: Session):
         return ui.div(
             ui.div(
                 ui.div(
+                    ui.p(
+                        ui.span("★", style="color: #eab308; font-size: 1rem; margin-right: 6px;"),
+                        ui.span("Best investment point (sweet spot): where you get the most on-time improvement per dollar", class_="text-muted small"),
+                        class_="mb-2 sim-chart-legend",
+                        style="font-size: 0.8rem;",
+                    ),
                     ui.div(output_widget("sim_chart"), class_="sim-chart-wrap"),
                     class_="sim-results-chart",
                 ),
@@ -1470,6 +1535,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                 marker=dict(size=6, color=color),
                 line=dict(color=color),
                 name=label,
+                hovertemplate="$%{x:,.0f}: %{y} on-time<extra></extra>",
             ))
             pts = c.get("chart_points_3", [])
             if len(pts) >= 2:
@@ -1478,12 +1544,14 @@ def server(input: Inputs, output: Outputs, session: Session):
                     x=[inv_sweet], y=[on_sweet], mode="markers",
                     marker=dict(size=12, color="gold", symbol="star", line=dict(width=1, color="gray")),
                     showlegend=False,
+                    hovertemplate=f"${inv_sweet:,.0f}: {on_sweet} on-time<extra></extra>",
+                    hoverlabel=dict(namelength=0),
                 ))
         fig.update_layout(
             height=400,
             autosize=True,
             xaxis_title="Investment ($)",
-            yaxis_title="On-time count",
+            yaxis_title="On-time shipments",
             margin=dict(t=40, b=70, l=50, r=20),
             showlegend=True,
             xaxis=dict(showgrid=True, gridcolor="#f1f5f9", zeroline=False),

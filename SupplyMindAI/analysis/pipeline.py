@@ -308,29 +308,37 @@ def get_hub_map_data_from_insights() -> dict:
     sid_to_flag = {r["shipment_id"]: (r.get("flag_status") or "").strip().lower() for r in insights if r.get("shipment_id")}
     shipment_ids = list(sid_to_flag.keys())
     stops_by_shipment = _fetch_stops_and_enrich(shipment_ids)
-    hub_to_flags = {}
+    hub_to_shipment_flags = {}  # hub_name -> set of (sid, flag) to count shipments per hub
     for sid, stops in stops_by_shipment.items():
         flag = sid_to_flag.get(sid, "on time")
         for s in stops:
             hn = s.get("hub_name")
             if hn:
-                hub_to_flags.setdefault(hn, set()).add(flag)
+                hub_to_shipment_flags.setdefault(hn, set()).add((sid, flag))
     all_rows = execute_query("SELECT hub_name, lat, lon FROM hubs")
     coords = {r["hub_name"]: (float(r["lat"]), float(r["lon"])) for r in all_rows if r.get("lat") is not None and r.get("lon") is not None}
     all_hubs = [{"hub_name": h, "lat": coords[h][0], "lon": coords[h][1]} for h in coords]
     status_order = {"critical": 3, "delayed": 2, "on time": 1}
     status_hubs = []
-    for hn, flags in hub_to_flags.items():
+    for hn, shipment_flags in hub_to_shipment_flags.items():
         if hn not in coords:
             continue
+        flags = {f for _, f in shipment_flags}
         worst = max(flags, key=lambda f: status_order.get(f, 0))
         status = "red" if worst == "critical" else ("orange" if worst == "delayed" else "green")
+        critical_count = sum(1 for _, f in shipment_flags if f == "critical")
+        delayed_count = sum(1 for _, f in shipment_flags if f == "delayed")
+        on_time_count = sum(1 for _, f in shipment_flags if f == "on time")
+        total_flagged = critical_count + delayed_count
         status_hubs.append({
             "hub_name": hn,
             "lat": coords[hn][0],
             "lon": coords[hn][1],
             "status": status,
-            "in_delayed_count": sum(1 for f in flags if f in ("delayed", "critical")),
+            "critical_count": critical_count,
+            "delayed_count": delayed_count,
+            "on_time_count": on_time_count,
+            "in_delayed_count": total_flagged,
             "risk_categories": [],
         })
     return {"all_hubs": all_hubs, "status_hubs": status_hubs}
