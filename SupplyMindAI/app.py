@@ -205,7 +205,8 @@ app_ui = ui.page_fluid(
         f"""
         * {{ font-family: "Inter", ui-sans-serif, system-ui, sans-serif !important; }}
         body {{ background-color: {_PALETTE["bg"]}; font-size: 0.9rem; color: {_PALETTE["text"]}; }}
-        .container-fluid {{ background-color: {_PALETTE["bg"]}; padding: 0 20px 20px; }}
+        .container-fluid {{ background-color: {_PALETTE["bg"]}; padding: 0 20px 20px;
+          max-width: 90%; margin-left: auto; margin-right: auto; }}
         .card {{ background-color: {_PALETTE["card_bg"]}; border: 1px solid {_PALETTE["border"]};
           border-radius: 12px; box-shadow: 0 1px 2px rgba(0,0,0,0.04); padding: 18px;
           transition: box-shadow 0.2s ease; }}
@@ -264,6 +265,24 @@ app_ui = ui.page_fluid(
         .card-accent-primary {{ border-top: 3px solid {_PALETTE["primary"]} !important; }}
         .card-accent-accent {{ border-top: 3px solid {_PALETTE["accent"]} !important; }}
         .card-secondary {{ background: {_PALETTE["card_secondary"]} !important; }}
+        .rec-panel-header {{ font-weight: 600; font-size: 1rem; margin-bottom: 10px;
+          border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }}
+        .rec-master {{ background: #f8fafc; border-left: 4px solid #2563eb; border-radius: 10px;
+          padding: 14px; margin-bottom: 12px; }}
+        .rec-alt {{ background: white; border-left: 4px solid #e5e7eb; border-radius: 10px;
+          padding: 12px; margin-bottom: 10px; }}
+        .rec-label-master {{ font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em;
+          color: #2563eb; text-transform: uppercase; margin-bottom: 4px; }}
+        .rec-label-alt {{ font-size: 0.7rem; font-weight: 600; letter-spacing: 0.04em;
+          color: #6b7280; text-transform: uppercase; margin-bottom: 4px; }}
+        .rec-text {{ font-size: 0.88rem; line-height: 1.4; color: #374151; margin-bottom: 0; }}
+        .rec-title {{ font-size: 0.85rem; font-weight: 600; margin-bottom: 4px; }}
+        .rec-metrics-row {{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }}
+        .rec-metric-chip {{ background: #eef2ff; padding: 4px 8px; border-radius: 6px;
+          font-size: 0.75rem; font-weight: 500; }}
+        .rec-metric-chip-roi-high {{ background: rgba(22,163,74,0.12); color: #16a34a; }}
+        .rec-metric-chip-roi-medium {{ background: rgba(217,119,6,0.12); color: #d97706; }}
+        .rec-metric-chip-roi-low {{ background: rgba(220,38,38,0.12); color: #dc2626; }}
         """
     ),
     ui.tags.header(
@@ -1087,26 +1106,23 @@ def server(input: Inputs, output: Outputs, session: Session):
             pts = c.get("chart_points_3", [])
             inv_sweet = pts[1][0] if len(pts) >= 2 else 0
             sim_ot = best.get("on_time_count", base_ot)
-            recovered = sim_ot - base_ot
-            if recovered > 0:
-                parts.append(
-                    ui.p(
-                        ui.strong(label + ": "),
-                        f"Invest ${inv_sweet:,.0f} to recover ~{recovered} shipment(s). ROI favorable.",
-                        class_="mb-2 small",
-                    )
+            recovered = max(0, sim_ot - base_ot)
+            text = f"Invest ${inv_sweet:,.0f} to recover ~{recovered} shipment(s). ROI favorable." if recovered > 0 else "Limited impact. Consider alternative levers."
+            chips = [
+                ui.span(f"${inv_sweet:,.0f} Investment", class_="rec-metric-chip"),
+                ui.span(f"+{recovered} Recovered", class_="rec-metric-chip"),
+            ]
+            parts.append(
+                ui.div(
+                    ui.div(label, class_="rec-title"),
+                    ui.p(text, class_="rec-text"),
+                    ui.div(*chips, class_="rec-metrics-row"),
+                    class_="rec-alt",
                 )
-            else:
-                parts.append(
-                    ui.p(
-                        ui.strong(label + ": "),
-                        "Limited impact. Consider alternative levers.",
-                        class_="mb-2 small text-muted",
-                    )
-                )
+            )
         if not parts:
             return ui.p("Review chart to compare options.", class_="text-muted small")
-        return ui.div(*parts, class_="small")
+        return ui.div(*parts)
 
     def _sim_selected() -> list:
         """Returns selected param labels (up to 5)."""
@@ -1267,7 +1283,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                     class_="sim-results-chart",
                 ),
                 ui.div(
-                    ui.h6("Recommendations", class_="card-title mb-2"),
+                    ui.h6("Recommendations", class_="rec-panel-header card-title mb-0"),
                     ui.output_ui("sim_recommendation"),
                     class_="sim-results-rec card-secondary p-3",
                 ),
@@ -1374,46 +1390,49 @@ def server(input: Inputs, output: Outputs, session: Session):
             inv_sweet = m.get("inv_sweet", 0)
             recovered = m.get("recovered", 0)
             roi_level = m.get("roi_level", "")
-            card_inner = [
-                ui.div(ui.strong("Master recommendation"), class_="small text-primary fw-semibold mb-1"),
-                ui.p(r1, class_="mb-1 small"),
+            chips = [
+                ui.span(f"${inv_sweet:,.0f} Investment", class_="rec-metric-chip"),
+                ui.span(f"+{recovered} Recovered", class_="rec-metric-chip"),
             ]
-            if inv_sweet > 0 or recovered > 0:
-                card_inner.append(
-                    ui.div(
-                        ui.span(
-                            f"${inv_sweet:,.0f} | +{recovered} recovered | {roi_level} ROI",
-                            class_="badge bg-light text-primary border border-primary",
-                        ),
-                        class_="mb-0",
-                    )
-                )
-            parts.append(ui.div(*card_inner, class_="border-start border-3 border-primary ps-2 mb-2"))
-        def _alt_block(label: str, text: str, m: dict):
-            block = [ui.p(ui.strong(f"{label}: "), text, class_="mb-1 small")]
+            roi_cls = "rec-metric-chip rec-metric-chip-roi-high" if roi_level == "High" else ("rec-metric-chip rec-metric-chip-roi-medium" if roi_level == "Medium" else "rec-metric-chip rec-metric-chip-roi-low")
+            chips.append(ui.span(f"{roi_level} ROI", class_=roi_cls))
+            card_inner = [
+                ui.div("MASTER RECOMMENDATION", class_="rec-label-master"),
+                ui.p(r1, class_="rec-text"),
+                ui.div(*chips, class_="rec-metrics-row"),
+            ]
+            parts.append(ui.div(*card_inner, class_="rec-master"))
+        def _alt_block(text: str, m: dict):
             inv_sweet = m.get("inv_sweet", 0)
             recovered = m.get("recovered", 0)
-            if inv_sweet > 0 or recovered > 0:
-                block.append(ui.span(
-                    f"${inv_sweet:,.0f} | +{recovered} recovered",
-                    class_="badge bg-light text-secondary border border-secondary small",
-                ))
-            return ui.div(*block, class_="border-start border-3 border-secondary ms-2 ps-2 mb-2")
+            roi_level = m.get("roi_level", "")
+            chips = [
+                ui.span(f"${inv_sweet:,.0f} Investment", class_="rec-metric-chip"),
+                ui.span(f"+{recovered} Recovered", class_="rec-metric-chip"),
+            ]
+            roi_cls = "rec-metric-chip rec-metric-chip-roi-high" if roi_level == "High" else ("rec-metric-chip rec-metric-chip-roi-medium" if roi_level == "Medium" else "rec-metric-chip rec-metric-chip-roi-low")
+            chips.append(ui.span(f"{roi_level} ROI", class_=roi_cls))
+            return ui.div(
+                ui.div("ALTERNATIVE OPTION", class_="rec-label-alt"),
+                ui.p(text, class_="rec-text"),
+                ui.div(*chips, class_="rec-metrics-row"),
+                class_="rec-alt",
+            )
 
         alternates = []
         r2 = insights.get("recommendation_2")
         if r2 and str(r2).strip():
             m = curve_metrics[1] if len(curve_metrics) > 1 else {}
-            alternates.append(_alt_block("Alternate 1", str(r2).strip(), m))
+            alternates.append(_alt_block(str(r2).strip(), m))
         r3 = insights.get("recommendation_3")
         if r3 and str(r3).strip():
             m = curve_metrics[2] if len(curve_metrics) > 2 else {}
-            alternates.append(_alt_block("Alternate 2", str(r3).strip(), m))
+            alternates.append(_alt_block(str(r3).strip(), m))
         if alternates:
-            parts.append(ui.div(ui.div("Alternates", class_="small fw-semibold text-secondary mb-1"), *alternates, class_="mt-2"))
+            parts.append(ui.div(*alternates, class_="mt-2"))
         alt = insights.get("alternative_params_message", "").strip()
         if alt:
-            parts.append(ui.p(alt, class_="mb-0 small text-muted mt-2"))
+            parts.append(ui.p(alt, class_="rec-text mb-0 mt-2 text-muted"))
         if not parts:
             return _fallback_recommendation(res)
         return ui.div(*parts, class_="small")
