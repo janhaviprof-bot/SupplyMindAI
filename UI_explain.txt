@@ -1,0 +1,284 @@
+================================================================================
+                    SUPPLYMIND AI - USER INTERFACE EXPLANATION
+================================================================================
+
+SupplyMind AI is a Shiny (Python) web application that provides an AI-powered
+shipment intelligence dashboard. The interface is a single-page fluid layout
+built with Bootstrap styling and custom CSS. Below is a detailed breakdown of
+each section.
+
+================================================================================
+1. OVERALL LAYOUT
+================================================================================
+
+The app uses a vertical, single-column fluid layout (ui.page_fluid). All
+content flows top to bottom with a light off-white background (#f8fafc).
+Cards use white backgrounds with subtle gray borders for visual hierarchy.
+
+Color palette (from coloupallet.md):
+  - Primary blue:    #0d6efd
+  - Primary dark:    #0958d9
+  - Cyan accent:     #22b8cf
+  - Dark blue text:  #1e3a5f
+  - Success (green): #198754
+  - Warning (amber): #ffc107
+  - Danger (red):    #dc3545
+  - Charcoal:        #212529
+  - Gray:            #6c757d
+
+
+================================================================================
+2. HEADER
+================================================================================
+
+The header spans the top of the page with a horizontal layout:
+
+  Left: Logo image (supplymind-logo.png)
+        - Fixed 128x128px container
+        - Object-fit: contain for aspect ratio preservation
+
+  Right: Title and tagline
+        - "Supply Mind AI" in large bold text (3.5rem), dark blue
+        - Tagline: "AI-powered shipment intelligence. Track in-transit deliveries,
+          predict delays, and optimize your supply chain in one dashboard."
+        - Smaller gray text (0.8rem)
+
+  - Border-bottom separates header from main content
+  - Background: white
+
+
+================================================================================
+3. STATUS BANNER (Dynamic)
+================================================================================
+
+A conditional alert appears when analysis is running:
+
+  - Blue info alert: "Running analysis..."
+  - Disappears when analysis completes
+  - Rendered by @render.ui status()
+
+
+================================================================================
+4. DELIVERY HEALTH DASHBOARD (Main Results Card)
+================================================================================
+
+The primary results area is a two-column card with two main panels:
+
+  -------- LEFT PANEL: Delivery Health --------
+
+  Section title: "Delivery Health"
+  Button: "Re-run Analysis" (outline secondary style) - triggers AI analysis
+
+  KPI Cards (horizontal flex row):
+    - Total In Transit: Count of all shipments, neutral styling
+    - On Time: Green border, count + percentage
+    - Delayed: Warning/amber border, count + percentage
+    - Critical: Danger/red border, count + percentage
+
+  AI Confidence Donut Chart:
+    - Pie chart with hole (donut style)
+    - Three segments: On Time (green), Delayed (amber), Critical (red)
+    - Center annotation: "X% AI confidence" (average confidence from insights)
+    - Labels and percentages outside segments
+    - Height: 240px
+
+  -------- RIGHT PANEL: Needs Attention --------
+
+  Section title: "Needs Attention"
+  Button: "View Escalated" or "View Escalated (N)" - opens offcanvas drawer
+
+  Critical Shipments List (scrollable, max-height 200px):
+    - Each item shows:
+      * Shipment ID (bold, red, clickable for details)
+      * Brief condensed reason (e.g., "Delays at [hubs] due to [risks]")
+      * "Escalate" button (outline danger, small)
+    - Clicking shipment ID opens a modal with full insight details
+    - Clicking Escalate adds shipment to the Escalated drawer
+    - Placeholder: "No critical shipments." when empty
+
+  Vertical divider separates left and right panels
+
+
+================================================================================
+5. INSIGHT DETAIL MODAL (Pop-up)
+================================================================================
+
+Triggered when user clicks a shipment ID in the Needs Attention list:
+
+  - Title: "{Shipment ID} DETAILS"
+  - Content:
+    * Category: On Time / Delayed / Critical (styled by status)
+    * AI prediction: Full reasoning text (up to 2 sentences, cleaned)
+    * AI predicted arrival: Friendly date format (e.g., Mar 7, 2026 at 8:30 PM)
+    * Target deadline: Same format
+  - Footer: "Close" button
+  - Easy close: Can dismiss by clicking outside
+  - Hidden input "insight_detail_id" drives reactivity
+
+
+================================================================================
+6. PREDICTION MAP
+================================================================================
+
+Full-width card below the main dashboard:
+
+  - Title: "Prediction Map"
+  - Description: "Hubs colored by AI prediction insights for in-transit shipments."
+
+  Interactive Plotly map (Scattergeo):
+    - USA projection (Albers USA), scope="usa"
+    - Gray land, white/light gray coastlines
+    - Markers:
+      * Small gray dots: All hubs (base layer)
+      * Green dots: Hubs with on-time shipments
+      * Orange dots: Hubs with delayed shipments
+      * Red dots: Hubs with critical shipments (size scales with count)
+    - Hover: Shows hub name and count of flagged shipments
+    - Legend: Horizontal, below map
+    - Height: 420px
+    - Placeholder when no data: "Run analysis to see hub map"
+
+
+================================================================================
+7. ESCALATED SHIPMENTS DRAWER (Offcanvas)
+================================================================================
+
+A slide-out panel from the right edge:
+
+  - ID: escalatedDrawer
+  - Bootstrap offcanvas (offcanvas-end)
+  - Header: "Escalated Shipments" + close (X) button
+  - Body:
+    * When empty: "Click Escalate next to a shipment to add it here."
+    * When populated: List of escalated shipment IDs with condensed reasons
+    * "Clear all" link at top to remove all escalated items
+  - Opens via "View Escalated" button in Needs Attention panel
+
+
+================================================================================
+8. SUPPLY CHAIN OPTIMIZATION SECTION
+================================================================================
+
+A large card divided into two columns (row, col-lg-6 each):
+
+  -------- LEFT COLUMN --------
+
+  Title: "Supply Chain Optimization"
+  Description: "Get AI-powered recommendations to improve your supply chain
+                based on delivered shipment data."
+
+  Date Range Selector:
+    - Dropdown: Yesterday | Past week | Past month | Past year | Custom
+    - If "Custom": Date range picker (start + end), max 1 year
+    - Default: Past year
+
+  Button: "Get Supply Chain Insights" (outline secondary)
+
+  When loading: "Fetching data and generating insights..." (info alert)
+
+  When results:
+    - Summary text (HTML, muted)
+    - "Suggested changes:" list (up to 4 items from control_parameters)
+    - Displayed in a light gray rounded box (bg-light p-3)
+
+  Error states:
+    - Custom range: "Please select a custom date range."
+    - Invalid range: "End date must be >= start date."
+    - Too long: "Custom range cannot exceed 1 year."
+
+  -------- RIGHT COLUMN: Parameter Simulation --------
+
+  Visible only after "Get Supply Chain Insights" has run (opt_insights_ready === 'yes')
+
+  Subtitle: "Parameter Simulation"
+
+  "Parameters to simulate":
+    - Badge chips (draggable/clickable) showing recommended parameters
+    - Up to 5 simulatable parameters from insights
+    - Each chip: bg-primary, sim-draggable-param class
+
+  "Selected parameters":
+    - Drop zone (dashed border) - initially "Click a parameter above to select"
+    - Supports: Click to toggle, drag-and-drop, or (x) to remove one
+    - Max 5 parameters
+    - "Clear all" link
+    - Updates hidden input sim_selected_param (values joined by |||)
+
+  Button: "Run simulation"
+
+  JavaScript handles:
+    - Drag start/end for chips
+    - Drop zone dragover/dragleave/drop
+    - Click on chip to add/remove from selection
+    - Shiny.setInputValue for sim_selected_param
+
+
+================================================================================
+9. SIMULATION RESULT CARD (Dynamic, below Optimization)
+================================================================================
+
+Appears after user runs "Run simulation":
+
+  - Card with header "Simulation result"
+  - While loading: "Running simulation..." alert
+
+  Layout (sim-results-row, flex):
+    - Left (flex: 2): Chart
+    - Right (flex: 1): Recommendations panel
+
+  Chart (Plotly):
+    - X-axis: Investment ($)
+    - Y-axis: On-time count
+    - One line per simulated parameter (colored: blue, green, orange, purple, red)
+    - Gold star markers at "sweet spot" for each curve
+    - Height: 420px
+    - Hover: x unified mode
+
+  Recommendations panel:
+    - Title: "Recommendations"
+    - Master recommendation (primary border, bold)
+      * AI-generated text from call_openai_sim_insights
+      * Badge: $Investment | +N recovered | ROI level
+    - Alternates (secondary border): Up to 2 alternate recommendations
+    - Fallback: If AI fails, shows investment/recovered per curve
+
+  Caveat: "* Analysis based on N shipments. Values reflect simulation results."
+
+
+================================================================================
+10. HIDDEN INPUTS (State Management)
+================================================================================
+
+  - escalate_which: Receives shipment ID when user clicks Escalate
+  - insight_detail_id: Receives shipment ID when user clicks for details
+  - opt_insights_ready: "yes" or "no" - gates Parameter Simulation visibility
+  - sim_selected_param: Pipe-separated list of selected param labels
+
+
+================================================================================
+11. INTERACTIVE BEHAVIOR SUMMARY
+================================================================================
+
+  1. On load: Cached insights from DB shown immediately (if any)
+  2. Re-run Analysis: Triggers run_analysis() pipeline (when _RUN_ANALYSIS_ON_LOAD)
+  3. Escalate: Adds shipment to escalated set, updates drawer
+  4. View Escalated: Opens offcanvas
+  5. Shipment ID click: Opens insight detail modal
+  6. Get Supply Chain Insights: Runs optimization pipeline, shows results + reveals Parameter Simulation
+  7. Parameter selection: Click or drag chips to select zone
+  8. Run simulation: Runs find_sweet_spot for each param, calls AI for insights
+
+
+================================================================================
+12. TECHNOLOGY STACK
+================================================================================
+
+  - Shiny for Python (ui, server, reactive, render)
+  - shinywidgets: output_widget, render_widget (Plotly charts)
+  - Plotly (go.Figure, Scattergeo, Pie, Scatter)
+  - Bootstrap 5 (cards, buttons, offcanvas, modals, badges)
+  - htmltools: HTML for raw HTML in text
+  - Custom CSS via ui.tags.style
+  - Inline JavaScript for drag-and-drop and chip selection
+
+================================================================================
