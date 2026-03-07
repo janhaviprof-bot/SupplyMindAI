@@ -239,14 +239,15 @@ app_ui = ui.page_fluid(
             ui.div(
                 ui.output_ui("opt_status"),
                 ui.output_ui("opt_results"),
-                class_="col-lg-6 border-end pe-4",
+                class_="col-lg-6 border-end pe-4 d-flex flex-column",
             ),
             # RHS column: Parameter Simulation (hidden until user runs Get Supply Chain Insights)
             ui.div(
                 ui.div(ui.input_text("opt_insights_ready", "", value="no"), class_="d-none"),
-                ui.panel_conditional(
-                    "input.opt_insights_ready === 'yes'",
-                    ui.div(
+                ui.div(
+                    ui.panel_conditional(
+                        "input.opt_insights_ready === 'yes'",
+                        ui.div(
                         ui.h5("Parameter Simulation", class_="h6 mb-2"),
                         ui.h6("Parameters to simulate", class_="mt-2 mb-1"),
                         ui.div(ui.output_ui("sim_param_chips"), id="sim-params-source", class_="sim-draggable-source mb-2"),
@@ -258,10 +259,12 @@ app_ui = ui.page_fluid(
                         ),
                         ui.div(ui.input_text("sim_selected_param", "", value=""), class_="d-none"),
                         ui.input_action_button("sim_run", "Run simulation", class_="btn-primary mt-2"),
-                        class_="card border rounded mt-3 p-3",
+                        class_="card border rounded mt-3 p-3 h-100",
                     ),
                 ),
-                class_="col-lg-6 ps-4",
+                class_="flex-grow-1 d-flex flex-column",
+                ),
+                class_="col-lg-6 ps-4 d-flex flex-column",
             ),
             class_="row",
         ),
@@ -961,7 +964,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                     box_parts.append(ui.tags.ul(*[ui.tags.li(_fmt_change(p), class_="small") for p in changes_list], class_="mb-0"))
                 left_content.append(ui.div(*box_parts, class_="bg-light p-3 rounded mt-2"))
 
-        return ui.div(*left_content, class_="card border rounded mt-3 p-3")
+        return ui.div(*left_content, class_="card border rounded mt-3 p-3 h-100 flex-grow-1")
 
     # --- Simulation card ---
     sim_result = reactive.value(None)
