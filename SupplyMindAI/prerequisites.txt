@@ -1,0 +1,13 @@
+# Posit Connect Cloud: Python Shiny — same directory as app.py
+# (pip-style; mirrors requirements.txt for Connect builds)
+
+shiny>=1.0.0
+shinywidgets>=0.3.0
+plotly>=5.0.0
+psycopg2-binary>=2.9.9
+openai>=1.0.0
+python-dotenv>=1.0.0
+markdown>=3.5
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+httpx>=0.27.0
