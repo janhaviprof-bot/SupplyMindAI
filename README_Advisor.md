@@ -108,6 +108,53 @@ The **What-If Advisor** is a multi-step agent pipeline that answers natural-lang
 
 5. **Downstream LLM agents** — Depending on the pipeline, the code runs additional **JSON** agents (structured output) and/or a **Narration** agent (markdown with a fixed section shape and a **Confidence: X/10** line).
 
+### Data flow (RAG, tools, agents)
+
+RAG runs in the **advisor process**: it pulls **live SQL snippets** from Postgres and **markdown** from `docs/`. **Tools** are invoked through **ToolDispatch** → HTTP to **MCP**, where handlers read the same **Postgres** (and run **analysis** code). **OpenAI** hosts all LLM steps; each prompt mixes the user text, **RAG chunks**, and **JSON from tools or prior agents** where applicable.
+
+```mermaid
+flowchart TB
+  U[User question + date_range]
+
+  subgraph RAG[RAG]
+    retrieve[retrieve]
+    SQL[(Postgres)]
+    DOC[Markdown docs]
+    SQL --> retrieve
+    DOC --> retrieve
+  end
+
+  U --> retrieve
+  retrieve --> C[Context chunks]
+
+  C --> Planner[Planner LLM]
+  U --> Planner
+
+  DIS[ToolDispatch → JSON-RPC POST /mcp]
+  MCP[MCP tool runtime]
+  DB[(Postgres + analysis)]
+
+  Planner <-.->|openai_tools: probe tools| DIS
+  DIS <--> MCP
+  MCP <--> DB
+
+  Planner --> HEUR[Heuristic overrides]
+  HEUR --> PE[Pipeline executor]
+
+  PE <-->|MCP tools per pipeline| DIS
+
+  PE --> BR{Intermediate JSON LLMs?}
+  BR -->|operational_snapshot| Narr[Narration LLM]
+  BR -->|optimization_simulation| Narr
+  BR -->|delivered_analytics| DA[DeliveredAnalytics LLM]
+  BR -->|full_stress| FS[Prediction → stress via MCP → Risk → Simulation]
+  DA --> Narr
+  FS --> Narr
+
+  C --> Narr
+  Narr --> OUT[Markdown answer]
+```
+
 ### Agent roles (conceptual)
 
 | Role | When it runs | Role |
