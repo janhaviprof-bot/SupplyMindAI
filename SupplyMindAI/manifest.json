@@ -6,16 +6,24 @@
     "entrypoint": "mcp_server.server:app"
   },
   "python": {
-    "version": "3.14.2",
+    "version": "3.12.4",
     "package_manager": {
       "name": "pip",
       "version": "25.3",
       "package_file": "requirements.txt"
     }
   },
+  "environment": {
+    "python": {
+      "requires": "==3.12.4"
+    }
+  },
   "files": {
     "requirements.txt": {
       "checksum": "b2a20995b797112f7b7729891fa9e3da"
+    },
+    ".python-version": {
+      "checksum": "7e127c0fccc27fd6e8ce8caf8ba41aa2"
     },
     "README.md": {
       "checksum": "8a49d44ece668dc259008352690eaccb"

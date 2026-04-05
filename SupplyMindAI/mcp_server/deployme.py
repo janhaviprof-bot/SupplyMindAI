@@ -5,6 +5,7 @@
 #
 # requirements.txt in the inner SupplyMindAI folder (parent of mcp_server/) is used for the bundle.
 
+import json
 import os
 import subprocess
 from pathlib import Path
@@ -21,6 +22,8 @@ CONNECT_SERVER = os.environ.get("CONNECT_SERVER") or os.environ.get(
 CONNECT_API_KEY = os.environ.get("CONNECT_API_KEY", "YOUR_KEY_HERE")
 CONNECT_NAME = os.environ.get("CONNECT_NAME", "supplymind-mcp")
 DEPLOY_TITLE = os.environ.get("CONNECT_DEPLOY_TITLE", "supplymind-mcp")
+# Connect often has older Python than your laptop; rsconnect still records local interpreter in manifest.
+CONNECT_PYTHON_VERSION = os.environ.get("CONNECT_PYTHON_VERSION", "3.12.4")
 ENTRYPOINT = "mcp_server.server:app"
 
 subprocess.run(
@@ -48,6 +51,16 @@ subprocess.run(
         str(APP_DIR),
     ],
     check=True,
+)
+
+manifest_path = APP_DIR / "manifest.json"
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+manifest.setdefault("python", {})["version"] = CONNECT_PYTHON_VERSION
+manifest.setdefault("environment", {}).setdefault("python", {})[
+    "requires"
+] = f"=={CONNECT_PYTHON_VERSION}"
+manifest_path.write_text(
+    json.dumps(manifest, indent=2) + "\n", encoding="utf-8"
 )
 
 subprocess.run(

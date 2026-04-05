@@ -32,6 +32,7 @@ Put credentials in `.env` in that directory (or export them in the shell):
 - `CONNECT_SERVER` or `CONNECT_URL` — Posit Connect base URL
 - `CONNECT_API_KEY` — API key from Connect
 - Optional: `CONNECT_NAME` (default `supplymind-mcp`) — `rsconnect add` / deploy server nickname; `CONNECT_DEPLOY_TITLE` (default `supplymind-mcp`) — content title
+- Optional: `CONNECT_PYTHON_VERSION` (default `3.12.4`) — must match a Python version **installed on Connect**. If you publish from a newer local Python (e.g. 3.14), `deployme.py` rewrites `manifest.json` so Connect does not look for that version. For Git/UI manifest publish, keep the inner folder’s `.python-version` file in sync with Connect and ensure `manifest.json` lists that same version under `python.version`.
 
 The script bundles the whole inner `SupplyMindAI` folder (so `advisor/`, `analysis/`, `db/` resolve) and uses FastAPI entrypoint `mcp_server.server:app`.
 
