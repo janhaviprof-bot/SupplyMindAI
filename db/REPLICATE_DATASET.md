@@ -64,6 +64,20 @@ If a table already has rows, clear it first (or use a new project) to avoid dupl
 | `DATA_SNAPSHOT.md` | Human-readable: every table, row, column |
 | `DATA_SNAPSHOT.txt` | Tab-separated sections |
 | `live_complete_dump.sql` | (optional) generated from **your** live DB — see `scripts/dump_supplymind_to_sql.py` |
+| `copy_from_peer.py` | Copy **`public`** schema from friend’s Postgres → yours via `pg_dump` / `pg_restore` (see below) |
+
+## Copy from a friend’s Supabase (live `public` schema)
+
+Use only with the database owner’s permission.
+
+1. Add to **`.env`** (never commit; **do not paste full URIs into AI chat** — passwords get logged):
+   - `SOURCE_POSTGRES_CONNECTION_STRING` — friend’s **direct** URI (port **5432**, `db.<ref>.supabase.co`).
+   - `POSTGRES_CONNECTION_STRING` — **your** URI (same style).
+2. Install PostgreSQL **client** tools (`pg_dump`, `pg_restore` on `PATH`).
+3. From repo root: `py db/copy_from_peer.py`  
+   If restore fails because objects already exist: new empty project, or `py db/copy_from_peer.py --clean` (destructive on target `public`).
+
+Only **`public`** is copied (not `auth`, `storage`, etc.).
 
 ## Verify
 

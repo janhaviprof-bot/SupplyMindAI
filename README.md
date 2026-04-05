@@ -41,7 +41,7 @@ See [docs/context.md](docs/context.md) for full project context, requirements, a
 ## ⚡ Quick Start
 
 1. Copy `.env.example` to `.env` and set:
-   - `POSTGRES_CONNECTION_STRING` — from Supabase Dashboard → Project Settings → Database
+   - `POSTGRES_CONNECTION_STRING` — or use **`DIRECT_URL`** / **`DATABASE_URL`** from Supabase **Connect → ORM** (see [`.env.example`](.env.example))
    - `OPENAI_API_KEY` — your OpenAI API key
 
 2. Install dependencies:

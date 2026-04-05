@@ -56,6 +56,24 @@ CREATE TABLE IF NOT EXISTS insights (
     confidence INTEGER
 );
 
+-- Simulation levers (Card 4 cost curve); matches peer DB / optimization docs
+CREATE TABLE IF NOT EXISTS levers (
+    lever_type TEXT PRIMARY KEY,
+    value_min NUMERIC NOT NULL,
+    value_max NUMERIC NOT NULL,
+    default_steps INTEGER DEFAULT 11,
+    unit_label TEXT,
+    description TEXT
+);
+
+CREATE TABLE IF NOT EXISTS lever_investment (
+    id SERIAL PRIMARY KEY,
+    lever_type TEXT NOT NULL REFERENCES levers (lever_type) ON DELETE CASCADE,
+    value NUMERIC NOT NULL,
+    investment_usd NUMERIC NOT NULL CHECK (investment_usd >= 0),
+    UNIQUE (lever_type, value)
+);
+
 CREATE INDEX IF NOT EXISTS idx_stops_shipment_id ON stops (shipment_id);
 CREATE INDEX IF NOT EXISTS idx_stops_hub_name ON stops (hub_name);
 CREATE INDEX IF NOT EXISTS idx_risks_hub_name ON risks (hub_name);

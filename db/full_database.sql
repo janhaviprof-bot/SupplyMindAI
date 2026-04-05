@@ -3,6 +3,8 @@
 -- Timestamps are fixed (reference: 2026-04-04 18:00:00+00 UTC), same as csv/*.csv.
 
 -- Reset (removes existing SupplyMind tables if present)
+DROP TABLE IF EXISTS lever_investment CASCADE;
+DROP TABLE IF EXISTS levers CASCADE;
 DROP TABLE IF EXISTS insights CASCADE;
 DROP TABLE IF EXISTS stops CASCADE;
 DROP TABLE IF EXISTS risks CASCADE;
@@ -61,6 +63,23 @@ CREATE INDEX idx_stops_shipment_id ON stops (shipment_id);
 CREATE INDEX idx_stops_hub_name ON stops (hub_name);
 CREATE INDEX idx_risks_hub_name ON risks (hub_name);
 CREATE INDEX idx_insights_shipment_id ON insights (shipment_id);
+
+CREATE TABLE levers (
+    lever_type TEXT PRIMARY KEY,
+    value_min NUMERIC NOT NULL,
+    value_max NUMERIC NOT NULL,
+    default_steps INTEGER DEFAULT 11,
+    unit_label TEXT,
+    description TEXT
+);
+
+CREATE TABLE lever_investment (
+    id SERIAL PRIMARY KEY,
+    lever_type TEXT NOT NULL REFERENCES levers (lever_type) ON DELETE CASCADE,
+    value NUMERIC NOT NULL,
+    investment_usd NUMERIC NOT NULL CHECK (investment_usd >= 0),
+    UNIQUE (lever_type, value)
+);
 
 -- === ALL DATA (complete) ===
 
