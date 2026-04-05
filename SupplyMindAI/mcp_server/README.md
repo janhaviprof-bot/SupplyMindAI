@@ -34,7 +34,7 @@ Put credentials in `.env` in that directory (or export them in the shell):
 - Optional: `CONNECT_NAME` (default `supplymind-mcp`) — `rsconnect add` / deploy server nickname; `CONNECT_DEPLOY_TITLE` (default `supplymind-mcp`) — content title
 - Optional: `CONNECT_PYTHON_VERSION` (default `3.12.4`) — must match a Python version **installed on Connect**. If you publish from a newer local Python (e.g. 3.14), `deployme.py` rewrites `manifest.json` so Connect does not look for that version. For Git/UI manifest publish, keep the inner folder’s `.python-version` file in sync with Connect and ensure `manifest.json` lists that same version under `python.version`.
 
-The script bundles the whole inner `SupplyMindAI` folder (so `advisor/`, `analysis/`, `db/` resolve) and uses FastAPI entrypoint `mcp_server.server:app`.
+The script bundles the whole inner `SupplyMindAI` folder (so `advisor/`, `analysis/`, `supplymind_db/` resolve) and uses FastAPI entrypoint `mcp_server.server:app`.
 
 After deploy, on the **API** content set Variables such as `OPENAI_API_KEY` and `POSTGRES_CONNECTION_STRING` (or `DIRECT_URL`) as needed. On the **Shiny** content set `SUPPLYMIND_MCP_URL` to the MCP endpoint, typically `https://<connect-host>/content/<api-content-id>/mcp` (confirm with a `POST` to `/mcp` if unsure).
 

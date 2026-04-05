@@ -1,11 +1,11 @@
 """
 Apply schema + seed SQL to Supabase/Postgres using POSTGRES_CONNECTION_STRING,
-DIRECT_URL, or DATABASE_URL from .env (same resolution as db/supabase_client.py).
+DIRECT_URL, or DATABASE_URL from .env (same resolution as supplymind_db/supabase_client.py).
 
 Usage (from repository root):
-  py SupplyMindAI/db/run_seeds.py
+  py SupplyMindAI/supplymind_db/run_seeds.py
 Or from the inner SupplyMindAI folder:
-  py db/run_seeds.py
+  py supplymind_db/run_seeds.py
 
 Statements are split on semicolon + newline (safe for bundled seed files).
 """
@@ -21,7 +21,7 @@ if str(ROOT) not in sys.path:
 
 import psycopg2  # noqa: E402
 
-from db.supabase_client import get_connection_string  # noqa: E402
+from supplymind_db.supabase_client import get_connection_string  # noqa: E402
 
 
 def _strip_line_comments(sql: str) -> str:
@@ -60,9 +60,9 @@ def _run_sql_file(conn, path: Path) -> None:
 
 def main() -> None:
     files = [
-        ROOT / "db" / "schema.sql",
-        ROOT / "db" / "seed.sql",
-        ROOT / "db" / "seed_bulk_100.sql",
+        ROOT / "supplymind_db" / "schema.sql",
+        ROOT / "supplymind_db" / "seed.sql",
+        ROOT / "supplymind_db" / "seed_bulk_100.sql",
     ]
     missing = [p for p in files if not p.exists()]
     if missing:

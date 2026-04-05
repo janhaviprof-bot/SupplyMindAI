@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Inner SupplyMindAI (contains advisor/, analysis/, db/, requirements.txt); not mcp_server/ alone.
+# Inner SupplyMindAI (contains advisor/, analysis/, supplymind_db/, requirements.txt); not mcp_server/ alone.
 APP_DIR = Path(__file__).resolve().parent.parent
 CONNECT_SERVER = os.environ.get("CONNECT_SERVER") or os.environ.get(
     "CONNECT_URL", "https://your-connect-server.com"

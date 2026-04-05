@@ -28,7 +28,7 @@ from analysis.simulation import (
     find_sweet_spot,
     simulate_delays,
 )
-from db.supabase_client import execute_query
+from supplymind_db.supabase_client import execute_query
 
 
 def tool_list_hub_names() -> list[str]:

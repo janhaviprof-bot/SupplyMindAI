@@ -1,7 +1,7 @@
 """What-If Advisor: multi-agent scenario analysis with RAG (chatbot UI in app).
 
 Avoid importing heavy submodules here so ``import advisor.tool_defs`` does not pull in
-``what_if`` (and thus ``db``) before ``mcp_server`` has finished package setup.
+``what_if`` (and thus ``supplymind_db``) before ``mcp_server`` has finished package setup.
 """
 
 from __future__ import annotations

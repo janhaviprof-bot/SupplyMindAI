@@ -32,7 +32,7 @@ The **User Guide** (card-by-card tour) is in this README below.
 |--------|-------------|
 | `docs/` | Documentation (guides, context, predictions, optimization) |
 | `SupplyMindAI/` | Shiny app (`app.py`), analysis pipeline, logo assets |
-| `SupplyMindAI/db/` | Supabase client and database utilities (bundled with the Shiny/MCP app) |
+| `SupplyMindAI/supplymind_db/` | Supabase client and database utilities (bundled with the Shiny/MCP app) |
 
 See [docs/context.md](docs/context.md) for full project context, requirements, and database schema.
 

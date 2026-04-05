@@ -2,7 +2,7 @@
 .env.local
 
 # Local export of live DB (optional; may diverge from reference seed)
-db/live_complete_dump.sql
+SupplyMindAI/supplymind_db/live_complete_dump.sql
 *.pyc
 __pycache__/
 .venv/

@@ -7,7 +7,7 @@ import re
 import os
 from pathlib import Path
 
-from db.supabase_client import execute_query
+from supplymind_db.supabase_client import execute_query
 
 
 def _repo_root() -> Path:

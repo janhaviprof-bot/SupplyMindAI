@@ -29,10 +29,10 @@
       "checksum": "8a49d44ece668dc259008352690eaccb"
     },
     "advisor/__init__.py": {
-      "checksum": "5f020ac8ba707855687f86e0264e65b6"
+      "checksum": "fe97b7a065cc0d3d57d2f146bd86c509"
     },
     "advisor/__pycache__/__init__.cpython-314.pyc": {
-      "checksum": "b85e0fb23229a9b95807aeda147e7cc2"
+      "checksum": "32768d9561694d7b27021dcd5cea3c49"
     },
     "advisor/__pycache__/rag.cpython-314.pyc": {
       "checksum": "90858a87b3bcb2645b3195b3b9ad09b1"
@@ -44,13 +44,13 @@
       "checksum": "cea9eedcad626f6a17a43e71a8fece2a"
     },
     "advisor/__pycache__/tools_impl.cpython-314.pyc": {
-      "checksum": "37a2c477823d8d43e92e0ac5d58ec03e"
+      "checksum": "579a7fe48592ee88f63ffc2746a673b4"
     },
     "advisor/__pycache__/what_if.cpython-314.pyc": {
       "checksum": "76c9495d2a667e4657c9b354164e6bc5"
     },
     "advisor/rag.py": {
-      "checksum": "1da49d2b4042429105a236a6b17c1880"
+      "checksum": "5a543851b891dd8f5389c0ab2c5a39be"
     },
     "advisor/tool_defs.py": {
       "checksum": "a113e3d02c634acd6711cbc05cf4cf5f"
@@ -59,7 +59,7 @@
       "checksum": "32b4612b4b0187b1173d6f22422753fc"
     },
     "advisor/tools_impl.py": {
-      "checksum": "b1c45abdb9ad9751bb111e1eb50c5a5e"
+      "checksum": "c7b29f3426859d0532e5c246f7e3360f"
     },
     "advisor/what_if.py": {
       "checksum": "39994b3a9a9865aa78e0458e9850d355"
@@ -71,82 +71,25 @@
       "checksum": "27fe2a1c5e292a2c6016bcbb7708fd06"
     },
     "analysis/__pycache__/optimization_pipeline.cpython-314.pyc": {
-      "checksum": "63cf51066193c5996cd45f3345e9738c"
+      "checksum": "e25b9bb65daa4ecdfdeac1ecc28e462b"
     },
     "analysis/__pycache__/pipeline.cpython-314.pyc": {
-      "checksum": "f176b78987a48625a7e926637f765159"
+      "checksum": "f09baa7da567d67539841cf81a5e3b6d"
     },
     "analysis/__pycache__/simulation.cpython-314.pyc": {
       "checksum": "34d1952a2d5a34a91b93745c7f8c25ab"
     },
     "analysis/optimization_pipeline.py": {
-      "checksum": "f174bb533b93e8f1dafff2e02e12c2b5"
+      "checksum": "6c6abb73074dca6fd73b36716a0d5e22"
     },
     "analysis/pipeline.py": {
-      "checksum": "082b291f32432200a05b41684baa5cf2"
+      "checksum": "2e2fa597f25d9fc9d123fb30ce26c459"
     },
     "analysis/simulation.py": {
       "checksum": "e6c47433c736181e632e718a2363e0d4"
     },
     "app.py": {
-      "checksum": "8bde68436137132b9c76f332df859d9f"
-    },
-    "db/DATA_SNAPSHOT.md": {
-      "checksum": "02deb5c02568f33dc6c8dfd098037dc9"
-    },
-    "db/DATA_SNAPSHOT.txt": {
-      "checksum": "b0cc6c0a96974b4cedc0162cf71c7386"
-    },
-    "db/REPLICATE_DATASET.md": {
-      "checksum": "0c475f06df5c852eba4d85178c5b54c9"
-    },
-    "db/__init__.py": {
-      "checksum": "cbd1df824379b6b7ce1f4f3068782c7a"
-    },
-    "db/__pycache__/__init__.cpython-314.pyc": {
-      "checksum": "7390df89d6603ba818ba77481e86eb45"
-    },
-    "db/__pycache__/supabase_client.cpython-314.pyc": {
-      "checksum": "ed81e405dd0496052655f7f0667d5085"
-    },
-    "db/apply_replication.py": {
-      "checksum": "bd2d7436fd1fcb6aab36b9786bda38b9"
-    },
-    "db/copy_from_peer.py": {
-      "checksum": "2d512ade898c1dce77d2ef2e6a043a47"
-    },
-    "db/csv/hubs.csv": {
-      "checksum": "0f98bf9fdd73f321014f96f74599bff9"
-    },
-    "db/csv/insights.csv": {
-      "checksum": "6277f0fc2893c6c38104f64ff451c43d"
-    },
-    "db/csv/risks.csv": {
-      "checksum": "b67bf9a3e6d2ca520d174102d9825c80"
-    },
-    "db/csv/shipments.csv": {
-      "checksum": "8f0398dcb7fc21c0f474327b2640abbc"
-    },
-    "db/csv/stops.csv": {
-      "checksum": "3df760296f9bfcc4cd6dbe50ad9b03e9"
-    },
-    "db/full_database.sql": {
-      "checksum": "cb7e28b71808e0db1b5ac9d481201bd4"
-    },
-    "db/run_seeds.py": {
-      "checksum": "76e04c908a97cdca3be1b66ada2cb42a"
-    },
-    "db/schema.sql": {
-      "checksum": "add923fc64c23e67324e4bb38529d78b"
-    },
-    "db/seed.sql": {
-      "checksum": "2af6ec5dfb46b4d52ce05854e18d055d"
-    },
-    "db/seed_bulk_100.sql": {
-      "checksum": "264ed3439ebe2d7265e4713d40518da3"
-    },
-    "db/supabase_client.py": {
-      "checksum": "5c7109053e2d7500fe32d8ac4f6e4c8b"
+      "checksum": "367eefcaeddf833a67d1f4a85bf5b159"
     },
     "docs/ARCHITECTURE_OVERVIEW.md": {
       "checksum": "973a7da051bfb9caae77cf96a4fe0bc9"
@@ -182,13 +125,13 @@
       "checksum": "de0e3ce2e19f36ef4b5b1e4ea9797da3"
     },
     "mcp_server/README.md": {
-      "checksum": "5795fd463bff2b6a896cbb19fe4d0fc7"
+      "checksum": "ebdd1fcaff25c5a5457182f818367bfc"
     },
     "mcp_server/__init__.py": {
-      "checksum": "bcc74f18c603c7c169a228201ef13a67"
+      "checksum": "f7f445b39287cc96aaa3d5681ce11fb9"
     },
     "mcp_server/__pycache__/__init__.cpython-314.pyc": {
-      "checksum": "563044e196ce9f3db28d28eb63fc5873"
+      "checksum": "b2a4f7e4cef5f1bb401167c4832a1dda"
     },
     "mcp_server/__pycache__/runme.cpython-314.pyc": {
       "checksum": "d4b7dc36ce8a31abae3c1a5833d3c520"
@@ -197,7 +140,7 @@
       "checksum": "f86d7ef811390966915fb8a34473f048"
     },
     "mcp_server/deployme.py": {
-      "checksum": "9a8cc0a5d0625ccdbb480e2c3645ad32"
+      "checksum": "c2655ec732ef526c8f51676bbc25e6be"
     },
     "mcp_server/runme.py": {
       "checksum": "7ec82e4904e7d33314f98bd6526c7e73"
@@ -207,6 +150,63 @@
     },
     "prerequisites.txt": {
       "checksum": "5b070216a39cd3f7f94e663a26f89684"
+    },
+    "supplymind_db/DATA_SNAPSHOT.md": {
+      "checksum": "02deb5c02568f33dc6c8dfd098037dc9"
+    },
+    "supplymind_db/DATA_SNAPSHOT.txt": {
+      "checksum": "b0cc6c0a96974b4cedc0162cf71c7386"
+    },
+    "supplymind_db/REPLICATE_DATASET.md": {
+      "checksum": "1038ad19c4ca97d083b653cfe0087986"
+    },
+    "supplymind_db/__init__.py": {
+      "checksum": "d151642a33f91a2b6cef736aae98ac5e"
+    },
+    "supplymind_db/__pycache__/__init__.cpython-314.pyc": {
+      "checksum": "6218d1fc83a07d5983c05252c6eb13b0"
+    },
+    "supplymind_db/__pycache__/supabase_client.cpython-314.pyc": {
+      "checksum": "ed81e405dd0496052655f7f0667d5085"
+    },
+    "supplymind_db/apply_replication.py": {
+      "checksum": "a9db5b3e9118a1f32b7b37b83592dddc"
+    },
+    "supplymind_db/copy_from_peer.py": {
+      "checksum": "b6d7ff4aa7e9e7675be12a9a84e831f0"
+    },
+    "supplymind_db/csv/hubs.csv": {
+      "checksum": "0f98bf9fdd73f321014f96f74599bff9"
+    },
+    "supplymind_db/csv/insights.csv": {
+      "checksum": "6277f0fc2893c6c38104f64ff451c43d"
+    },
+    "supplymind_db/csv/risks.csv": {
+      "checksum": "b67bf9a3e6d2ca520d174102d9825c80"
+    },
+    "supplymind_db/csv/shipments.csv": {
+      "checksum": "8f0398dcb7fc21c0f474327b2640abbc"
+    },
+    "supplymind_db/csv/stops.csv": {
+      "checksum": "3df760296f9bfcc4cd6dbe50ad9b03e9"
+    },
+    "supplymind_db/full_database.sql": {
+      "checksum": "cb7e28b71808e0db1b5ac9d481201bd4"
+    },
+    "supplymind_db/run_seeds.py": {
+      "checksum": "e9529c0dce84e2ccdeab910644ed830a"
+    },
+    "supplymind_db/schema.sql": {
+      "checksum": "add923fc64c23e67324e4bb38529d78b"
+    },
+    "supplymind_db/seed.sql": {
+      "checksum": "2af6ec5dfb46b4d52ce05854e18d055d"
+    },
+    "supplymind_db/seed_bulk_100.sql": {
+      "checksum": "264ed3439ebe2d7265e4713d40518da3"
+    },
+    "supplymind_db/supabase_client.py": {
+      "checksum": "5c7109053e2d7500fe32d8ac4f6e4c8b"
     }
   }
 }

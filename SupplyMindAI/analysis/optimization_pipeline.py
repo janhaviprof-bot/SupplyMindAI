@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from analysis.simulation import HUB_CAPACITY_K_EXPLAINER_OPTIMIZATION
-from db.supabase_client import execute_query, get_connection
+from supplymind_db.supabase_client import execute_query, get_connection
 
 MAX_SHIPMENTS = 200  # Cap for large date ranges
 

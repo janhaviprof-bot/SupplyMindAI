@@ -1,4 +1,4 @@
-"""Apply db/schema.sql then db/seed.sql using get_connection_string() from .env."""
+"""Apply supplymind_db/schema.sql then supplymind_db/seed.sql using get_connection_string() from .env."""
 from __future__ import annotations
 
 import sys
@@ -8,7 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from db.supabase_client import get_connection_string  # noqa: E402
+from supplymind_db.supabase_client import get_connection_string  # noqa: E402
 
 try:
     import psycopg2

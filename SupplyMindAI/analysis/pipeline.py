@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from db.supabase_client import execute_query, get_connection
+from supplymind_db.supabase_client import execute_query, get_connection
 
 
 def _load_env():

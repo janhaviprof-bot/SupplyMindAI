@@ -11,7 +11,7 @@ import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-# Inner app dir (analysis/, advisor/, db/) on path
+# Inner app dir (analysis/, advisor/, supplymind_db/) on path
 _app_dir = Path(__file__).resolve().parent
 sys.path.insert(0, str(_app_dir))
 
@@ -34,7 +34,7 @@ from analysis.optimization_pipeline import (
 )
 from analysis.simulation import find_sweet_spot, lever_value_to_usd
 from advisor.what_if import run_what_if_advisor
-from db.supabase_client import execute_query
+from supplymind_db.supabase_client import execute_query
 # -----------------------------------------------------------------------------
 # TEMPORARY: Feature 1 run-on-load toggle. Set False to skip analysis when app opens.
 # Remove this block before push — restore "Runs automatically on load" behavior.

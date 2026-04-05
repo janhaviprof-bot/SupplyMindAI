@@ -25,7 +25,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from psycopg2.extensions import adapt
 
-from db.supabase_client import get_connection_string
+from supplymind_db.supabase_client import get_connection_string
 
 TABLES_ORDER = ["hubs", "shipments", "stops", "risks", "insights"]
 ORDER_BY_CLAUSE = {
@@ -58,7 +58,11 @@ def sql_literal(val) -> str:
 
 
 def main() -> int:
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "db" / "live_complete_dump.sql"
+    out = (
+        Path(sys.argv[1])
+        if len(sys.argv) > 1
+        else ROOT / "SupplyMindAI" / "supplymind_db" / "live_complete_dump.sql"
+    )
     out.parent.mkdir(parents=True, exist_ok=True)
 
     conn = psycopg2.connect(get_connection_string())

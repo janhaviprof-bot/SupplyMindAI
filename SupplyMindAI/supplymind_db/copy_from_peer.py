@@ -14,10 +14,10 @@ Use direct db.*.supabase.co:5432 URIs when possible. You need permission from th
 
 Run from repo root:
 
-  py SupplyMindAI/db/copy_from_peer.py
-  py SupplyMindAI/db/copy_from_peer.py --clean   # only affects pg_restore path
+  py SupplyMindAI/supplymind_db/copy_from_peer.py
+  py SupplyMindAI/supplymind_db/copy_from_peer.py --clean   # only affects pg_restore path
 
-Or from the inner SupplyMindAI folder: py db/copy_from_peer.py
+Or from the inner SupplyMindAI folder: py supplymind_db/copy_from_peer.py
 
 Only the public schema is considered (not auth/storage/realtime).
 """
@@ -160,7 +160,7 @@ def _copy_via_psycopg2(source_dsn: str, target_dsn: str) -> None:
             print(
                 "No common public base tables between SOURCE and TARGET.\n"
                 "The psycopg2 path only copies rows into tables that already exist on BOTH sides.\n"
-                "If TARGET is empty: run db/schema.sql (or db/full_database.sql / db/replicate_snapshot_full.sql)\n"
+                "If TARGET is empty: run supplymind_db/schema.sql (or supplymind_db/full_database.sql)\n"
                 "in YOUR Supabase SQL Editor first, then run this script again.\n",
                 file=sys.stderr,
             )
@@ -289,7 +289,7 @@ def main() -> None:
 
     if str(ROOT) not in sys.path:
         sys.path.insert(0, str(ROOT))
-    from db.supabase_client import normalize_postgres_uri
+    from supplymind_db.supabase_client import normalize_postgres_uri
 
     source = normalize_postgres_uri(source)
     target = normalize_postgres_uri(target)

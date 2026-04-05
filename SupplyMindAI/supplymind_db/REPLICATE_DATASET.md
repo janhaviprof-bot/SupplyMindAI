@@ -13,12 +13,12 @@ Use this when setting up a **new Supabase project** or a **fresh clone** of the 
 **Option A — Complete database in one paste (recommended)**
 
 1. Open [Supabase Dashboard](https://supabase.com/dashboard) → your project → **SQL Editor**.
-2. Open **`db/full_database.sql`**, copy **everything**, paste, **Run**.  
+2. Open **`SupplyMindAI/supplymind_db/full_database.sql`**, copy **everything**, paste, **Run**.  
    This **drops** existing SupplyMind tables if present, recreates them, and inserts **every row** with fixed timestamps.
 
 **Option B — Schema only, then data separately**
 
-1. Run **`db/schema.sql`** in SQL Editor (creates empty tables).
+1. Run **`SupplyMindAI/supplymind_db/schema.sql`** in SQL Editor (creates empty tables).
 2. Continue with Step 2 below.
 
 ## Step 2 — Load data (pick one method)
@@ -27,16 +27,16 @@ Skip this if you already ran **`full_database.sql`** in Step 1 Option A.
 
 ### Method A — SQL seed (relative dates)
 
-1. In **SQL Editor**, open **`db/seed.sql`**, copy all, paste, **Run**.
+1. In **SQL Editor**, open **`SupplyMindAI/supplymind_db/seed.sql`**, copy all, paste, **Run**.
 2. Rows use `NOW()` so deadlines and stop times stay realistic over time.
 
 ### Method B — CSV import (fixed timestamps for docs / reproducibility)
 
 1. Ensure Step 1 is done (empty tables or first-time load).
-2. Supabase → **Table Editor** → open **`hubs`** → **Insert** → **Import data from CSV** → choose **`db/csv/hubs.csv`** (match column names).
+2. Supabase → **Table Editor** → open **`hubs`** → **Insert** → **Import data from CSV** → choose **`SupplyMindAI/supplymind_db/csv/hubs.csv`** (match column names).
 3. Repeat in this **exact order** (foreign keys):  
    **`hubs`** → **`shipments`** → **`stops`** → **`risks`** → **`insights`**.
-4. Use the matching file under **`db/csv/`** for each table.
+4. Use the matching file under **`SupplyMindAI/supplymind_db/csv/`** for each table.
 
 If a table already has rows, clear it first (or use a new project) to avoid duplicates.
 
@@ -53,7 +53,7 @@ If a table already has rows, clear it first (or use a new project) to avoid dupl
 
 3. Run the app per the main README (e.g. `py -m shiny run SupplyMindAI/app.py`).
 
-## Reference files in `db/`
+## Reference files in `SupplyMindAI/supplymind_db/`
 
 | File | Role |
 |------|------|
@@ -74,8 +74,8 @@ Use only with the database owner’s permission.
    - `SOURCE_POSTGRES_CONNECTION_STRING` — friend’s **direct** URI (port **5432**, `db.<ref>.supabase.co`).
    - `POSTGRES_CONNECTION_STRING` — **your** URI (same style).
 2. Install PostgreSQL **client** tools (`pg_dump`, `pg_restore` on `PATH`).
-3. From repo root: `py SupplyMindAI/db/copy_from_peer.py`  
-   If restore fails because objects already exist: new empty project, or `py SupplyMindAI/db/copy_from_peer.py --clean` (destructive on target `public`).
+3. From repo root: `py SupplyMindAI/supplymind_db/copy_from_peer.py`  
+   If restore fails because objects already exist: new empty project, or `py SupplyMindAI/supplymind_db/copy_from_peer.py --clean` (destructive on target `public`).
 
 Only **`public`** is copied (not `auth`, `storage`, etc.).
 
@@ -100,15 +100,15 @@ Paste the block below so the assistant knows what to do without re-deriving it:
 **Cursor prompt (copy from here):**
 
 ```
-This repo includes database replication assets under db/.
+This repo includes database replication assets under SupplyMindAI/supplymind_db/.
 
 To replicate the COMPLETE SupplyMind database (schema + all rows) in Supabase:
-1. Run db/full_database.sql once in SQL Editor (DROP/CREATE + all INSERTs). OR use db/schema.sql then db/seed.sql or db/csv/*.csv per db/REPLICATE_DATASET.md.
+1. Run SupplyMindAI/supplymind_db/full_database.sql once in SQL Editor (DROP/CREATE + all INSERTs). OR use supplymind_db/schema.sql then supplymind_db/seed.sql or supplymind_db/csv/*.csv per REPLICATE_DATASET.md.
 2. Set POSTGRES_CONNECTION_STRING in local .env (never commit .env).
 
 To export live DB to SQL: py scripts/dump_supplymind_to_sql.py
 
-Details: db/REPLICATE_DATASET.md
+Details: SupplyMindAI/supplymind_db/REPLICATE_DATASET.md
 ```
 
 ---
