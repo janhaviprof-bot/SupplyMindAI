@@ -22,15 +22,21 @@ except ImportError:
 
 
 def _load_env():
-    """Load .env from project root if present."""
-    env_path = Path(__file__).resolve().parent.parent / ".env"
-    if env_path.exists():
-        with open(env_path) as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    k, v = line.split("=", 1)
-                    os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+    """Load .env from inner app dir or repository root if present."""
+    d = Path(__file__).resolve().parent
+    for _ in range(5):
+        env_path = d / ".env"
+        if env_path.is_file():
+            with open(env_path, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line and not line.startswith("#") and "=" in line:
+                        k, v = line.split("=", 1)
+                        os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+            return
+        if d.parent == d:
+            break
+        d = d.parent
 
 
 def normalize_postgres_uri(uri: str) -> str:

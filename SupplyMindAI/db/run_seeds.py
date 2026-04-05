@@ -2,7 +2,9 @@
 Apply schema + seed SQL to Supabase/Postgres using POSTGRES_CONNECTION_STRING,
 DIRECT_URL, or DATABASE_URL from .env (same resolution as db/supabase_client.py).
 
-Usage (from repository root — the folder that contains db/ and .env):
+Usage (from repository root):
+  py SupplyMindAI/db/run_seeds.py
+Or from the inner SupplyMindAI folder:
   py db/run_seeds.py
 
 Statements are split on semicolon + newline (safe for bundled seed files).

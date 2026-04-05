@@ -17,8 +17,9 @@ from decimal import Decimal
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+INNER = ROOT / "SupplyMindAI"
+if str(INNER) not in sys.path:
+    sys.path.insert(0, str(INNER))
 
 import psycopg2
 from psycopg2.extras import RealDictCursor

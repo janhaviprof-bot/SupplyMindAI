@@ -14,8 +14,10 @@ Use direct db.*.supabase.co:5432 URIs when possible. You need permission from th
 
 Run from repo root:
 
-  py db/copy_from_peer.py
-  py db/copy_from_peer.py --clean   # only affects pg_restore path
+  py SupplyMindAI/db/copy_from_peer.py
+  py SupplyMindAI/db/copy_from_peer.py --clean   # only affects pg_restore path
+
+Or from the inner SupplyMindAI folder: py db/copy_from_peer.py
 
 Only the public schema is considered (not auth/storage/realtime).
 """
@@ -34,14 +36,16 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def _load_env() -> None:
-    env_path = ROOT / ".env"
-    if not env_path.is_file():
+    for base in (ROOT, ROOT.parent):
+        env_path = base / ".env"
+        if not env_path.is_file():
+            continue
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                os.environ[k.strip()] = v.strip().strip('"').strip("'")
         return
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            k, v = line.split("=", 1)
-            os.environ[k.strip()] = v.strip().strip('"').strip("'")
 
 
 def _norm_table(regclass_or_name: str) -> str:

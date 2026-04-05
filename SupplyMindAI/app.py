@@ -11,10 +11,9 @@ import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
-# Ensure project root (for db) and SupplyMindAI (for analysis) are on path
-_root = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_root))
-sys.path.insert(0, str(_root / "SupplyMindAI"))
+# Inner app dir (analysis/, advisor/, db/) on path
+_app_dir = Path(__file__).resolve().parent
+sys.path.insert(0, str(_app_dir))
 
 import markdown
 import plotly.graph_objects as go

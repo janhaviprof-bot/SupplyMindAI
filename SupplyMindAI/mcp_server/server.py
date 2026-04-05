@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 
 _inner = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(_inner.parent))
 sys.path.insert(0, str(_inner))
 
 from fastapi import FastAPI, Request, Response

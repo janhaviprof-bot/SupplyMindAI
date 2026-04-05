@@ -74,8 +74,8 @@ Use only with the database owner’s permission.
    - `SOURCE_POSTGRES_CONNECTION_STRING` — friend’s **direct** URI (port **5432**, `db.<ref>.supabase.co`).
    - `POSTGRES_CONNECTION_STRING` — **your** URI (same style).
 2. Install PostgreSQL **client** tools (`pg_dump`, `pg_restore` on `PATH`).
-3. From repo root: `py db/copy_from_peer.py`  
-   If restore fails because objects already exist: new empty project, or `py db/copy_from_peer.py --clean` (destructive on target `public`).
+3. From repo root: `py SupplyMindAI/db/copy_from_peer.py`  
+   If restore fails because objects already exist: new empty project, or `py SupplyMindAI/db/copy_from_peer.py --clean` (destructive on target `public`).
 
 Only **`public`** is copied (not `auth`, `storage`, etc.).
 

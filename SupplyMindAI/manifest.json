@@ -89,7 +89,64 @@
       "checksum": "e6c47433c736181e632e718a2363e0d4"
     },
     "app.py": {
-      "checksum": "d48bcd0a532014390e71c7609c389158"
+      "checksum": "8bde68436137132b9c76f332df859d9f"
+    },
+    "db/DATA_SNAPSHOT.md": {
+      "checksum": "02deb5c02568f33dc6c8dfd098037dc9"
+    },
+    "db/DATA_SNAPSHOT.txt": {
+      "checksum": "b0cc6c0a96974b4cedc0162cf71c7386"
+    },
+    "db/REPLICATE_DATASET.md": {
+      "checksum": "0c475f06df5c852eba4d85178c5b54c9"
+    },
+    "db/__init__.py": {
+      "checksum": "cbd1df824379b6b7ce1f4f3068782c7a"
+    },
+    "db/__pycache__/__init__.cpython-314.pyc": {
+      "checksum": "7390df89d6603ba818ba77481e86eb45"
+    },
+    "db/__pycache__/supabase_client.cpython-314.pyc": {
+      "checksum": "ed81e405dd0496052655f7f0667d5085"
+    },
+    "db/apply_replication.py": {
+      "checksum": "bd2d7436fd1fcb6aab36b9786bda38b9"
+    },
+    "db/copy_from_peer.py": {
+      "checksum": "2d512ade898c1dce77d2ef2e6a043a47"
+    },
+    "db/csv/hubs.csv": {
+      "checksum": "0f98bf9fdd73f321014f96f74599bff9"
+    },
+    "db/csv/insights.csv": {
+      "checksum": "6277f0fc2893c6c38104f64ff451c43d"
+    },
+    "db/csv/risks.csv": {
+      "checksum": "b67bf9a3e6d2ca520d174102d9825c80"
+    },
+    "db/csv/shipments.csv": {
+      "checksum": "8f0398dcb7fc21c0f474327b2640abbc"
+    },
+    "db/csv/stops.csv": {
+      "checksum": "3df760296f9bfcc4cd6dbe50ad9b03e9"
+    },
+    "db/full_database.sql": {
+      "checksum": "cb7e28b71808e0db1b5ac9d481201bd4"
+    },
+    "db/run_seeds.py": {
+      "checksum": "76e04c908a97cdca3be1b66ada2cb42a"
+    },
+    "db/schema.sql": {
+      "checksum": "add923fc64c23e67324e4bb38529d78b"
+    },
+    "db/seed.sql": {
+      "checksum": "2af6ec5dfb46b4d52ce05854e18d055d"
+    },
+    "db/seed_bulk_100.sql": {
+      "checksum": "264ed3439ebe2d7265e4713d40518da3"
+    },
+    "db/supabase_client.py": {
+      "checksum": "5c7109053e2d7500fe32d8ac4f6e4c8b"
     },
     "docs/ARCHITECTURE_OVERVIEW.md": {
       "checksum": "973a7da051bfb9caae77cf96a4fe0bc9"
@@ -125,7 +182,7 @@
       "checksum": "de0e3ce2e19f36ef4b5b1e4ea9797da3"
     },
     "mcp_server/README.md": {
-      "checksum": "c44bfbb5c2350f6fe5bb2e20d6c65401"
+      "checksum": "1027fd014747fd302284ac4e5c2ac2eb"
     },
     "mcp_server/__init__.py": {
       "checksum": "d41d8cd98f00b204e9800998ecf8427e"
@@ -137,16 +194,16 @@
       "checksum": "d4b7dc36ce8a31abae3c1a5833d3c520"
     },
     "mcp_server/__pycache__/server.cpython-314.pyc": {
-      "checksum": "e84180d22126aa23dc98bc4c17a24ee8"
+      "checksum": "f86d7ef811390966915fb8a34473f048"
     },
     "mcp_server/deployme.py": {
-      "checksum": "c681e88bddd58a1751727110cea0bddf"
+      "checksum": "9a8cc0a5d0625ccdbb480e2c3645ad32"
     },
     "mcp_server/runme.py": {
       "checksum": "7ec82e4904e7d33314f98bd6526c7e73"
     },
     "mcp_server/server.py": {
-      "checksum": "ba029f9d82f255893a4d0e0a23c43277"
+      "checksum": "d8659fe0de2bc033eb8b366dc4a39953"
     },
     "prerequisites.txt": {
       "checksum": "5b070216a39cd3f7f94e663a26f89684"
