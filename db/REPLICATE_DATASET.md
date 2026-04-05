@@ -52,8 +52,8 @@ If a table already has rows, clear it first (or use a new project) to avoid dupl
 | `schema.sql` | Table definitions |
 | `seed.sql` | Inserts (Method A) |
 | `csv/*.csv` | Same logical data, fixed UTC times (Method B) |
-| `DATA_SNAPSHOT.md` | Human-readable tables + overview |
-| `DATA_SNAPSHOT.txt` | Tab-separated dump for reading / spreadsheets |
+| `DATA_SNAPSHOT.md` | **Full** human-readable copy: every table, every row, every column |
+| `DATA_SNAPSHOT.txt` | Same data, tab-separated (sections per table) |
 
 ## Verify
 
