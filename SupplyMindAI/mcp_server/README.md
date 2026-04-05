@@ -38,6 +38,8 @@ The script bundles the whole inner `SupplyMindAI` folder (so `advisor/`, `analys
 
 After deploy, on the **API** content set Variables such as `OPENAI_API_KEY` and `POSTGRES_CONNECTION_STRING` (or `DIRECT_URL`) as needed. On the **Shiny** content set `SUPPLYMIND_MCP_URL` to the MCP endpoint, typically `https://<connect-host>/content/<api-content-id>/mcp` (confirm with a `POST` to `/mcp` if unsure).
 
+**Example (Cornell `connect.systems-apps.com`):** Shiny variable `SUPPLYMIND_MCP_URL` = `https://connect.systems-apps.com/content/4684a7e7-6271-47d8-aacd-d4805850d51f/mcp`. The Connect admin page for that API is `https://connect.systems-apps.com/connect/#/apps/4684a7e7-6271-47d8-aacd-d4805850d51f/content-view` — that UI URL is not the MCP base; the app must use the `/content/.../mcp` URL.
+
 ## Tools
 
 - `list_hub_names`
