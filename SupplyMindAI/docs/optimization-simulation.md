@@ -20,9 +20,9 @@ These are the only levers you can control. They are the building blocks for both
 
 | # | Parameter | Lever (What You Control) | Data Source | Simulation Formula |
 |---|-----------|--------------------------|-------------|--------------------|
-| 1 | **Hub capacity** | Increase `max_capacity` at a hub (reduces congestion) | `hubs.max_capacity`, `hubs.current_load` | Capacity multiplier k: congestion delay = 0 when `current_load ≤ k × max_capacity` |
-| 2 | **Dispatch time at hub** | Reduce dwell/processing time at each hub stop | `actual_departure − actual_arrival` per stop | D_sim = max(0, D_obs − ρ × total_dwell) |
-| 3 | **Transit mode** | Switch to faster transit (e.g., air vs truck) | Not in schema; modeled as time reduction | D_sim = max(0, D_obs − reduction_hrs) |
+| 1 | **Hub capacity** | Scale effective capacity at a hub via k (reduces congestion) | `hubs.max_capacity`, `hubs.current_load` | k: `C_sim = k × max_capacity`; k=1.0 = no increase vs nominal; k=1.2 = +20%. Congestion delay = 0 when `current_load ≤ C_sim` |
+| 2 | **Dispatch time at hub** | Reduce dwell/processing time at each hub stop | `actual_departure − actual_arrival` per stop | D_sim = max(0, D_obs − ρ × max(total_dwell, min(D_obs, 72h))) |
+| 3 | **Transit mode** | Switch to faster transit (e.g., air vs truck) | Not in schema; modeled as time reduction | reduction = k_transit × D_obs, k_transit ∈ [0, 1] |
 | 4 | **Earlier dispatch** | Dispatch shipments X hours earlier | Same delay data | D_sim = max(0, D_obs − shift_hrs) |
 | 5 | **Risk-based ETA buffer** | Add buffer to planning when predicted risk exists | `risks.est_delay_hrs` per hub on route | Buffer = ρ × Σ est_delay_hrs; D_sim = max(0, D_obs − ρ × R) |
 
@@ -32,21 +32,21 @@ These are the only levers you can control. They are the building blocks for both
 
 ### 3.1 Hub Capacity
 
-- **What it does:** Reduces congestion by increasing the maximum capacity at a hub.
-- **Congestion** = how full a hub is (current_load / max_capacity). When load exceeds capacity, delays occur.
-- **Capacity** is the lever; **congestion** is the outcome. They are the same lever (one controls the other).
-- **Simulation:** Sweep capacity multiplier from 1.0× to 2.0×. Congestion delay drops when load ≤ new capacity.
+- **What it does:** Reduces congestion by scaling effective capacity with multiplier **k** on the hub’s nominal `max_capacity`: **C_sim = k × max_capacity**.
+- **Semantics:** k=1.0 means no increase vs the recorded nominal capacity; k=1.2 means 20% more effective capacity (simulation and dashboard expansion grids typically sweep k from 1.0 to 2.0).
+- **Congestion** = how full a hub is relative to capacity. When load exceeds effective capacity, delays occur.
+- **Stress / recovery (What-If):** The same k applies; stress scenarios use k≤1 (e.g. k=0.8 = 20% below nominal). Optional recovery sweet-spot search sweeps k on a range such as ~0.75–1.35.
 
 ### 3.2 Dispatch Time at Hub
 
 - **What it does:** Reduces the time a shipment spends at each hub before departing.
 - **Dwell** = departure − arrival for each stop.
-- **Simulation:** Apply a dwell reduction factor (e.g., 20% faster processing). Effective earlier delivery.
+- **Simulation:** Apply dwell reduction factor ρ on `max(total_dwell, min(D_obs, 72h))` so long delays still respond when raw dwell sums are small.
 
 ### 3.3 Transit Mode
 
 - **What it does:** Shorter transit between hubs (e.g., switch from truck to air).
-- **Simulation:** Model as a transit-time reduction percentage. No schema field; use a reduction factor.
+- **Simulation:** Modeled as removing a fraction of observed delay D_obs (0–100% at max lever); k=1 can bring D_sim to 0 for that lever alone.
 
 ### 3.4 Earlier Dispatch
 
@@ -94,11 +94,11 @@ The AI prompt instructs the model to recommend **only** actions that map to the 
 1. User gets recommendations from Feature 2.
 2. User selects parameters to simulate (click-to-add).
 3. For each selected parameter, user configures the value range:
-   - Hub capacity: multiplier 1.0–2.0
+   - Hub capacity: k 1.0–2.0 (k=1.0 baseline, k=1.2 = +20% vs nominal)
    - Dispatch time at hub: dwell reduction 0–100%
-   - Transit mode: transit reduction 0–50%
-   - Earlier dispatch: hours 0–24
-   - Risk-based buffer: buffer factor ρ 0–1.5
+   - Transit mode: fraction of D_obs removed 0–1.0
+   - Earlier dispatch: hours 0–720
+   - Risk-based buffer: buffer factor ρ 0–8
 4. User clicks "Run simulation."
 5. Engine duplicates the dataset and re-runs the delay model for each value in the grid.
 6. Compute on-time count, delayed count, avg delay for each value.
@@ -109,7 +109,7 @@ The AI prompt instructs the model to recommend **only** actions that map to the 
 
 ## 7. Mathematical Model (Summary)
 
-**For hub capacity:** Use congestion delay decomposition. Congestion delay at hub h = max(0, (L_h − C_h) / C_h) × α. With capacity multiplier k, use C_h_new = k × C_h.
+**For hub capacity:** Use congestion delay decomposition. Congestion delay at hub h = max(0, (L_h − C_h) / C_h) × α. With capacity multiplier k, use C_h_new = k × C_h (k=1.0 = nominal; k=1.2 = +20% vs that nominal).
 
 **For time-shift levers (2–5):** D_sim = max(0, D_obs − reduction_hrs), where reduction depends on the lever (dwell reduction, transit reduction, fixed hours, or risk-based buffer).
 

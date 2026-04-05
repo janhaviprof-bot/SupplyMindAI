@@ -50,7 +50,7 @@ This codebook describes every data point in the SupplyMind AI system: where it c
 | **lat** | Float | Latitude | Map (Plotly scattergeo); hub coordinates |
 | **lon** | Float | Longitude | Map (Plotly scattergeo); hub coordinates |
 | **current_load** | Integer | Current trucks/pallets at hub | AI payload; simulation (congestion: L in max(0,(L-C)/C)×α) |
-| **max_capacity** | Integer | Max trucks/pallets | AI payload; simulation (C in congestion formula; capacity multiplier) |
+| **max_capacity** | Integer | Max trucks/pallets (nominal C) | AI payload; simulation uses C_sim = k × max_capacity (k=1.0 = no change vs this value) |
 | **status** | String | "Open", "Congested", "Closed" | AI payload; confidence heuristic (all_open check) |
 
 ---

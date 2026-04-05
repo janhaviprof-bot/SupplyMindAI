@@ -290,13 +290,71 @@ def get_all_insights() -> list[dict]:
     return [dict(r) for r in rows]
 
 
+def get_in_transit_dashboard_summary() -> dict:
+    """
+    Counts for the main dashboard card: every shipment with status 'In Transit',
+    joined to its latest insight row (if any). Shipments without a usable flag
+    count as pending (no AI prediction in DB yet).
+    """
+    rows = execute_query(
+        """
+        SELECT s.shipment_id,
+               x.flag_status, x.predicted_arrival, x.reasoning, x.confidence, x.insight_id
+        FROM shipments s
+        LEFT JOIN LATERAL (
+            SELECT insight_id, shipment_id, flag_status, predicted_arrival, reasoning, confidence
+            FROM insights
+            WHERE shipment_id = s.shipment_id
+            ORDER BY insight_id DESC
+            LIMIT 1
+        ) x ON true
+        WHERE s.status = 'In Transit'
+        ORDER BY s.shipment_id
+        """
+    )
+    on_time = delayed = critical = pending = 0
+    insights_written: list[dict] = []
+    for r in rows:
+        fl = (r.get("flag_status") or "").strip().lower()
+        if fl == "on time":
+            on_time += 1
+        elif fl == "delayed":
+            delayed += 1
+        elif fl == "critical":
+            critical += 1
+        else:
+            pending += 1
+        if r.get("insight_id"):
+            insights_written.append(
+                {
+                    "shipment_id": r["shipment_id"],
+                    "flag_status": r.get("flag_status"),
+                    "predicted_arrival": r.get("predicted_arrival"),
+                    "reasoning": r.get("reasoning"),
+                    "confidence": r.get("confidence"),
+                }
+            )
+    return {
+        "on_time": on_time,
+        "delayed": delayed,
+        "critical": critical,
+        "pending": pending,
+        "in_transit_total": len(rows),
+        "insights_written": insights_written,
+    }
+
+
 def get_hub_map_data_from_insights() -> dict:
     """
     Build hub map data from Feature 1 (in-transit predictions).
     Returns {all_hubs: [...], status_hubs: [...]} for map display.
     Status: red=Critical, orange=Delayed, green=On Time (worst flag among shipments using that hub).
     """
-    insights = get_all_insights()
+    in_transit_rows = execute_query(
+        "SELECT shipment_id FROM shipments WHERE status = 'In Transit'"
+    )
+    in_transit_ids = {r["shipment_id"] for r in in_transit_rows}
+    insights = [r for r in get_all_insights() if r.get("shipment_id") in in_transit_ids]
     if not insights:
         all_rows = execute_query("SELECT hub_name, lat, lon FROM hubs")
         all_hubs = [

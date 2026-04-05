@@ -343,11 +343,11 @@ The AI can only suggest actions that map to these five simulation levers:
 
 | Lever | AI Recommendation Phrasing | What You Control |
 |-------|----------------------------|------------------|
-| hub_capacity | "Hub X: Increase capacity" | Capacity multiplier (1.0×–2.0×) at target hub |
+| hub_capacity | "Hub X: Increase capacity" | Capacity multiplier k (1.0–2.0): C_sim = k × nominal max_capacity; k=1.0 no increase, k=1.2 = +20% |
 | dispatch_time_at_hub | "Hub X: Reduce dwell time" | Dwell reduction (0–100%) |
-| transit_mode | "Use faster transit" | Transit-time reduction (0–50%) |
-| earlier_dispatch | "Dispatch earlier" | Hours earlier (0–24) |
-| risk_based_buffer | "Add risk-based ETA buffer" | Buffer factor ρ (0–1.5) |
+| transit_mode | "Use faster transit" | Fraction of modeled delay removed (0–1.0; 1.0 can fully recover in simulation) |
+| earlier_dispatch | "Dispatch earlier" | Hours earlier (0–720, up to ~30 days in the model) |
+| risk_based_buffer | "Add risk-based ETA buffer" | Buffer factor ρ (0–8) applied to Σ est_delay_hrs |
 
 The Parameter Simulation chips are parsed from these recommendations. When you select parameters and click **Run simulation**, those selections are sent to the simulation engine.
 
@@ -401,10 +401,10 @@ The same enriched payloads from Card 3: `on_time_raw` and `delayed_raw`. Each de
 ### Deep dive: Algorithm (per lever)
 
 **Hub capacity (lever 1):**  
-Delay is split into congestion and risk. Congestion delay at a hub = `max(0, (current_load - capacity) / capacity) × α` (α = 3). Simulate by scaling capacity: `capacity_new = value × capacity_orig`. Recompute congestion; risk stays the same.
+Delay is split into congestion and risk. Congestion delay at a hub = `max(0, (current_load - capacity) / capacity) × α` (α = 3). Simulate with multiplier k on recorded max_capacity: `capacity_new = k × capacity_orig` (k=1.0 = no increase vs nominal; k=1.2 = 20% more effective capacity). Recompute congestion; risk stays the same.
 
 **Time-shift levers (2–5):**  
-`D_sim = max(0, D_obs - reduction_hrs)`, where `reduction_hrs` comes from the lever value (e.g., dwell reduction × total dwell, or risk buffer × sum of `est_delay_hrs`).
+`D_sim = max(0, D_obs - reduction_hrs)`, where `reduction_hrs` comes from the lever value. Dispatch uses `value × max(total dwell, min(D_obs, 72h))` so the curve can move when recorded dwell is small but the shipment is still late.
 
 **Reclassification:**  
 If `D_sim ≤ 0`, the shipment is "recovered" (counted as on-time). On-time shipments stay on-time.
@@ -427,7 +427,7 @@ If `D_sim ≤ 0`, the shipment is "recovered" (counted as on-time). On-time ship
 `D_obs = D_base + Σ D_cong + Σ D_risk`  
 `D_sim = D_base + Σ D_cong_sim + Σ D_risk`
 
-- Simulated capacity: *C_use = k × C_orig* (where *k* = lever value, only at target hub)
+- Simulated capacity: *C_use = k × C_orig* (*k* = lever value; k=1.0 baseline, k=1.2 = +20% vs nominal; only at target hub)
 - Risk contribution unchanged
 
 **3. Time-shift (levers 2–5)**
@@ -435,7 +435,7 @@ If `D_sim ≤ 0`, the shipment is "recovered" (counted as on-time). On-time ship
 `D_sim = max(0, D_obs - reduction_hrs)`
 
 - **Dwell:** reduction = value × total_dwell_hours  
-- **Transit:** reduction = value × D_obs (value ∈ [0, 0.5])  
+- **Transit:** reduction = value × D_obs (value ∈ [0, 1.0])  
 - **Earlier dispatch:** reduction = value (hours)  
 - **Risk buffer:** reduction = value × Σ est_delay_hrs
 

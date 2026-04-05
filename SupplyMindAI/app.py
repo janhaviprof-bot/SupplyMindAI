@@ -4,6 +4,8 @@ Dashboard: KPI cards, donut chart, critical shipments, escalation panel.
 Runs shipment analysis on load and via Re-run button.
 Includes supply chain optimization insights.
 """
+import asyncio
+import html
 import re
 import sys
 from datetime import date, datetime, timedelta
@@ -14,18 +16,26 @@ _root = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_root))
 sys.path.insert(0, str(_root / "SupplyMindAI"))
 
+import markdown
 import plotly.graph_objects as go
 from shiny import App, Inputs, Outputs, Session, reactive, render, ui
 from htmltools import HTML
 from shinywidgets import output_widget, render_widget
 
-from analysis.pipeline import run_analysis, get_all_insights, get_hub_map_data_from_insights
+from analysis.pipeline import (
+    run_analysis,
+    get_all_insights,
+    get_hub_map_data_from_insights,
+    get_in_transit_dashboard_summary,
+)
 from analysis.optimization_pipeline import (
     run_optimization_insights_with_data,
     parse_recommendation_to_sim_param,
     call_openai_sim_insights,
 )
 from analysis.simulation import find_sweet_spot, lever_value_to_usd
+from advisor.what_if import run_what_if_advisor
+from db.supabase_client import execute_query
 # -----------------------------------------------------------------------------
 # TEMPORARY: Feature 1 run-on-load toggle. Set False to skip analysis when app opens.
 # Remove this block before push — restore "Runs automatically on load" behavior.
@@ -203,6 +213,10 @@ app_ui = ui.page_fluid(
     ui.tags.meta(name="viewport", content="width=device-width, initial-scale=1"),
     ui.tags.link(
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=DM+Sans:wght@500;600&display=swap",
+        rel="stylesheet",
+    ),
+    ui.tags.link(
+        href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap",
         rel="stylesheet",
     ),
     ui.tags.style(
@@ -396,6 +410,104 @@ app_ui = ui.page_fluid(
             class_="card card-accent-accent p-3 mt-0 mb-0",
         ),
         class_="section-container prediction-map-section",
+    ),
+    ui.div(
+        ui.div(
+            ui.h5("What-If Advisor", class_="card-title-divider mb-2"),
+            ui.p(
+                "Ask the agent about capacity and delay scenarios. Replies use your data, RAG, tools, and simulation.",
+                class_="text-muted small mb-3",
+            ),
+            ui.div(
+                ui.div(
+                    ui.div(
+                        ui.span("agent", class_="whatif-adk-badge"),
+                        ui.div(
+                            ui.span("Session", class_="whatif-topbar-title"),
+                            ui.span("RAG · database tools · simulation", class_="whatif-topbar-sub"),
+                            class_="whatif-chat-topbar-text",
+                        ),
+                        class_="whatif-chat-topbar-inner",
+                    ),
+                    class_="whatif-chat-topbar",
+                ),
+                ui.div(
+                    ui.output_ui("whatif_chat"),
+                    class_="whatif-chat-scroll",
+                ),
+                ui.div(
+                    ui.div(
+                        ui.input_select(
+                            "whatif_date_range",
+                            "Simulation baseline (delivered cohort)",
+                            choices={
+                                "yesterday": "Yesterday",
+                                "week": "Past week",
+                                "month": "Past month",
+                                "year": "Past year",
+                            },
+                            selected="week",
+                            width="100%",
+                        ),
+                        class_="whatif-baseline-row",
+                    ),
+                    ui.div(
+                        ui.span("Demo prompts:", class_="whatif-demo-label"),
+                        ui.input_action_button(
+                            "whatif_demo1",
+                            "Capacity what-if",
+                            class_="btn whatif-demo-btn",
+                            title="Fill message box with a sample capacity scenario",
+                        ),
+                        ui.input_action_button(
+                            "whatif_demo2",
+                            "In-transit snapshot",
+                            class_="btn whatif-demo-btn",
+                            title="Fill message box with a sample operational question",
+                        ),
+                        ui.input_action_button(
+                            "whatif_demo3",
+                            "Optimization & ROI",
+                            class_="btn whatif-demo-btn",
+                            title="Minimum investment / lever ROI (optimization + simulation pipeline)",
+                        ),
+                        ui.input_action_button(
+                            "whatif_demo4",
+                            "Where is my shipment?",
+                            class_="btn whatif-demo-btn",
+                            title="Track a sample in-transit shipment (operational context)",
+                        ),
+                        class_="whatif-demo-row",
+                    ),
+                    ui.div(
+                        ui.div(
+                            ui.div(
+                                ui.input_text_area(
+                                    "whatif_question",
+                                    "",
+                                    rows=2,
+                                    placeholder="Ask the agent…",
+                                    width="100%",
+                                ),
+                                class_="whatif-composer-input",
+                            ),
+                            ui.input_action_button(
+                                "whatif_run",
+                                "\u27a4",
+                                class_="btn whatif-send-fab",
+                                title="Send",
+                            ),
+                            class_="whatif-composer-pill",
+                        ),
+                        class_="whatif-chat-composer-inner",
+                    ),
+                    class_="whatif-chat-composer",
+                ),
+                class_="whatif-chat-shell whatif-adk-root",
+            ),
+            class_="card card-accent-primary p-3 mt-0 mb-0",
+        ),
+        class_="section-container whatif-advisor-section",
     ),
     ui.div(ui.input_text("escalate_which", label="", value=""), class_="d-none"),
     ui.div(ui.input_text("insight_detail_id", label="", value=""), class_="d-none"),
@@ -607,6 +719,166 @@ app_ui = ui.page_fluid(
             .param-desc {{ font-size: 0.78rem; color: #4b5563; line-height: 1.3; }}
             .param-accordion .accordion-button {{ font-size: 0.8rem !important; font-weight: 500 !important; padding: 6px 12px !important; }}
         .prediction-map-section {{ margin-bottom: 16px !important; }}
+        .whatif-advisor-section {{ margin-bottom: 16px !important; }}
+        .whatif-advisor-section .card {{ overflow: hidden; }}
+        .whatif-adk-root, .whatif-adk-root * {{
+          font-family: "Roboto", "Inter", ui-sans-serif, system-ui, sans-serif !important;
+        }}
+        .whatif-chat-shell {{
+          background: #fff;
+          border: 1px solid {_PALETTE["border"]};
+          border-radius: 10px;
+          box-shadow: none;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          min-height: 420px;
+          max-height: 78vh;
+        }}
+        .whatif-chat-topbar {{
+          background: #f8fafc;
+          border-bottom: 1px solid {_PALETTE["border"]};
+          padding: 10px 14px;
+          flex-shrink: 0;
+        }}
+        .whatif-chat-topbar-inner {{ display: flex; gap: 12px; align-items: flex-start; }}
+        .whatif-adk-badge {{
+          font-size: 0.62rem;
+          font-weight: 500;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #1a73e8;
+          background: #e8f0fe;
+          border-radius: 4px;
+          padding: 5px 9px;
+          flex-shrink: 0;
+          line-height: 1.2;
+          margin-top: 2px;
+        }}
+        .whatif-topbar-title {{ display: block; font-weight: 500; font-size: 1rem; color: #202124; letter-spacing: -0.01em; }}
+        .whatif-topbar-sub {{ display: block; font-size: 0.75rem; color: #5f6368; margin-top: 3px; line-height: 1.35; }}
+        .whatif-chat-scroll {{ flex: 1 1 auto; min-height: 200px; overflow-y: auto; background: #f8f9fa; padding: 16px 14px; }}
+        .whatif-chat-window {{ display: flex; flex-direction: column; gap: 18px; }}
+        .whatif-msg-row {{ display: flex; gap: 10px; align-items: flex-end; width: 100%; }}
+        .whatif-msg-row-user {{ flex-direction: row-reverse; }}
+        .whatif-msg-row-assistant {{ flex-direction: row; align-items: flex-start; }}
+        .whatif-avatar {{
+          flex-shrink: 0;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: #1a73e8;
+          color: #fff;
+          font-size: 0.62rem;
+          font-weight: 700;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          letter-spacing: 0.02em;
+          box-shadow: 0 1px 2px rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+        }}
+        .whatif-msg-meta {{ font-size: 0.7rem; color: #5f6368; margin-bottom: 5px; padding-left: 2px; font-weight: 500; }}
+        .whatif-msg-row-user .whatif-msg-meta {{ text-align: right; padding-left: 0; padding-right: 2px; }}
+        .whatif-msg-col {{ display: flex; flex-direction: column; max-width: calc(100% - 46px); min-width: 0; }}
+        .whatif-msg-row-user .whatif-msg-col {{ align-items: flex-end; }}
+        .whatif-msg-user {{
+          background: #e8f0fe;
+          color: #174ea6;
+          border-radius: 20px 20px 6px 20px;
+          padding: 11px 16px;
+          font-size: 0.9rem;
+          line-height: 1.45;
+          border: 1px solid #d2e3fc;
+          word-break: break-word;
+        }}
+        .whatif-msg-assistant {{
+          background: #fff;
+          border: 1px solid #dadce0;
+          border-radius: 20px 20px 20px 6px;
+          padding: 12px 16px;
+          font-size: 0.9rem;
+          line-height: 1.55;
+          color: #202124;
+          box-shadow: 0 1px 2px rgba(60,64,67,0.12), 0 1px 3px 1px rgba(60,64,67,0.08);
+          word-break: break-word;
+        }}
+        .whatif-msg-assistant h2 {{ font-size: 1.05rem; margin-top: 0.65rem; margin-bottom: 0.45rem; color: #202124; font-weight: 500; }}
+        .whatif-msg-assistant h2:first-child {{ margin-top: 0; }}
+        .whatif-msg-assistant ul {{ padding-left: 1.15rem; margin-bottom: 0.5rem; }}
+        .whatif-msg-loading {{ color: #5f6368; }}
+        .whatif-typing {{ display: inline-flex; gap: 5px; align-items: center; padding: 4px 0; }}
+        .whatif-typing span {{
+          width: 7px;
+          height: 7px;
+          background: #1a73e8;
+          border-radius: 50%;
+          opacity: 0.45;
+          animation: whatif-dot 1.2s ease-in-out infinite;
+        }}
+        .whatif-typing span:nth-child(2) {{ animation-delay: 0.15s; }}
+        .whatif-typing span:nth-child(3) {{ animation-delay: 0.3s; }}
+        @keyframes whatif-dot {{ 0%, 60%, 100% {{ opacity: 0.35; transform: scale(0.92); }} 30% {{ opacity: 1; transform: scale(1); }} }}
+        .whatif-chat-details {{ margin-top: 12px; padding-top: 10px; border-top: 1px solid #dadce0; font-size: 0.8rem; color: #5f6368; }}
+        .whatif-chat-details summary {{ cursor: pointer; font-weight: 500; color: #1a73e8; margin-bottom: 6px; list-style: none; }}
+        .whatif-chat-details summary::-webkit-details-marker {{ display: none; }}
+        .whatif-chat-details ul {{ margin-bottom: 0; padding-left: 1.1rem; }}
+        .whatif-chat-empty {{ color: #5f6368; font-size: 0.88rem; padding: 32px 16px; text-align: center; line-height: 1.55; }}
+        .whatif-chat-composer {{ flex-shrink: 0; border-top: 1px solid #dadce0; background: #fff; padding: 12px 14px 14px; }}
+        .whatif-baseline-row {{ margin-bottom: 10px; }}
+        .whatif-demo-row {{ display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 10px; }}
+        .whatif-demo-label {{ font-size: 0.72rem; color: #5f6368; font-weight: 500; width: 100%; margin-bottom: 2px; }}
+        @media (min-width: 480px) {{
+          .whatif-demo-label {{ width: auto; margin-bottom: 0; margin-right: 4px; }}
+        }}
+        .whatif-demo-btn {{ font-size: 0.78rem !important; padding: 5px 14px !important; border-radius: 999px !important; border: 1px solid #dadce0 !important; background: #fff !important; color: #1a73e8 !important; line-height: 1.3 !important; }}
+        .whatif-demo-btn:hover {{ background: #e8f0fe !important; border-color: #1a73e8 !important; color: #1557b0 !important; }}
+        .whatif-baseline-row label {{ font-size: 0.75rem !important; color: #5f6368 !important; font-weight: 500 !important; }}
+        .whatif-baseline-row select {{ border-radius: 8px !important; border-color: #dadce0 !important; font-size: 0.85rem !important; }}
+        .whatif-chat-composer-inner {{ width: 100%; }}
+        .whatif-composer-pill {{
+          display: flex;
+          align-items: flex-end;
+          gap: 8px;
+          border: 1px solid #dadce0;
+          border-radius: 28px;
+          padding: 6px 8px 6px 16px;
+          background: #fff;
+          box-shadow: 0 1px 2px rgba(60,64,67,0.08);
+        }}
+        .whatif-composer-input {{ flex: 1; min-width: 0; }}
+        .whatif-composer-input textarea {{
+          border: none !important;
+          box-shadow: none !important;
+          background: transparent !important;
+          font-size: 0.95rem !important;
+          resize: none !important;
+          min-height: 44px !important;
+          max-height: 140px;
+          padding: 8px 0 !important;
+          color: #202124 !important;
+        }}
+        .whatif-composer-input textarea:focus {{ outline: none !important; }}
+        .whatif-send-fab {{
+          flex-shrink: 0;
+          width: 44px;
+          height: 44px;
+          min-width: 44px;
+          border-radius: 50% !important;
+          padding: 0 !important;
+          margin-bottom: 2px;
+          background: #1a73e8 !important;
+          border: none !important;
+          color: #fff !important;
+          font-size: 1.2rem;
+          font-weight: 500;
+          line-height: 1;
+          display: inline-flex !important;
+          align-items: center;
+          justify-content: center;
+          box-shadow: 0 1px 2px rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+        }}
+        .whatif-send-fab:hover {{ background: #1557b0 !important; color: #fff !important; }}
+        .whatif-send-fab:focus {{ box-shadow: 0 1px 2px rgba(60,64,67,0.3), 0 0 0 3px rgba(26,115,232,0.25) !important; }}
         .prediction-map-two-cards {{ display: grid; grid-template-columns: 1fr 2fr; gap: 16px; }}
         .prediction-map-step {{ font-size: 0.8rem; line-height: 1.55; color: #4b5563; }}
         .prediction-map-summary-card {{ flex-shrink: 0; min-width: 0; }}
@@ -634,6 +906,9 @@ app_ui = ui.page_fluid(
               .d-flex.gap-0 {{ flex-direction: column !important; }}
               .delivery-health-split > div:last-child {{ border-left: none !important; border-top: 1px solid #e5e7eb !important; }}
               .prediction-map-two-cards {{ grid-template-columns: 1fr !important; }}
+              .whatif-chat-shell {{ max-height: 85vh; min-height: 360px; }}
+              .whatif-composer-pill {{ flex-wrap: wrap; border-radius: 16px; padding: 8px 10px; }}
+              .whatif-send-fab {{ width: 100%; height: 44px; border-radius: 22px !important; margin-bottom: 0; }}
             }}
             """
         ),
@@ -643,8 +918,15 @@ app_ui = ui.page_fluid(
 )
 
 
-def _kpi_cards(on_time: int, delayed: int, critical: int):
-    total = on_time + delayed + critical
+def _kpi_cards(
+    on_time: int,
+    delayed: int,
+    critical: int,
+    in_transit_total: int | None = None,
+    pending: int = 0,
+):
+    """in_transit_total = DB count; KPI shares use that denominator when provided."""
+    total = in_transit_total if in_transit_total is not None else (on_time + delayed + critical)
     pct_on = int(100 * on_time / total) if total else 0
     pct_delayed = int(100 * delayed / total) if total else 0
     pct_critical = int(100 * critical / total) if total else 0
@@ -695,12 +977,34 @@ def _kpi_cards(on_time: int, delayed: int, critical: int):
             class_="kpi-card",
         ),
     ]
+    if pending > 0:
+        pct_pend = int(100 * pending / total) if total else 0
+        cards.append(
+            ui.div(
+                ui.div(
+                    ui.div(
+                        ui.span("", class_="kpi-dot", style="background-color: #94a3b8;"),
+                        ui.span(str(pending), class_="kpi-value d-inline"),
+                        class_="mb-1",
+                    ),
+                    ui.div(f"No prediction yet ({pct_pend}%)", class_="kpi-label"),
+                    class_="text-center",
+                ),
+                class_="kpi-card",
+            )
+        )
     return ui.div(*cards, class_="d-flex flex-wrap gap-2")
 
 
-def _status_donut_with_confidence(on_time: int, delayed: int, critical: int, insights: list[dict]):
-    """Status breakdown donut (On Time/Delayed/Critical) with AI confidence % in center."""
-    total = on_time + delayed + critical
+def _status_donut_with_confidence(
+    on_time: int,
+    delayed: int,
+    critical: int,
+    insights: list[dict],
+    pending: int = 0,
+):
+    """Status breakdown donut with optional 'No prediction yet' slice; AI confidence in center."""
+    total = on_time + delayed + critical + pending
     if total == 0:
         fig = go.Figure().add_annotation(
             text="No data", x=0.5, y=0.5, showarrow=False, font_size=14
@@ -710,13 +1014,32 @@ def _status_donut_with_confidence(on_time: int, delayed: int, critical: int, ins
         if insights:
             avg_conf = sum((r.get("confidence") or 5) for r in insights) / len(insights)
             conf_pct = int(round(avg_conf / 10 * 100))
+        labels = []
+        values = []
+        colors = []
+        if on_time > 0:
+            labels.append("On Time")
+            values.append(on_time)
+            colors.append("#22c55e")
+        if delayed > 0:
+            labels.append("Delayed")
+            values.append(delayed)
+            colors.append("#f59e0b")
+        if critical > 0:
+            labels.append("Critical")
+            values.append(critical)
+            colors.append("#ef4444")
+        if pending > 0:
+            labels.append("No prediction yet")
+            values.append(pending)
+            colors.append("#94a3b8")
         fig = go.Figure(
             data=[
                 go.Pie(
-                    labels=["On Time", "Delayed", "Critical"],
-                    values=[on_time, delayed, critical],
+                    labels=labels,
+                    values=values,
                     hole=0.72,
-                    marker_colors=["#22c55e", "#f59e0b", "#ef4444"],
+                    marker_colors=colors,
                     textinfo="label+percent",
                     textposition="outside",
                     hovertemplate="%{label}<br>%{value} shipments<extra></extra>",
@@ -745,15 +1068,19 @@ def _status_donut_with_confidence(on_time: int, delayed: int, critical: int, ins
 
 
 def _cached_result_from_db():
-    """Load counts from existing insights (instant, no OpenAI)."""
+    """Load Card 1 counts from DB: all in-transit shipments + latest insight per row (instant, no OpenAI)."""
     try:
-        insights = get_all_insights()
+        return {**get_in_transit_dashboard_summary(), "error": None}
     except Exception:
-        return {"on_time": 0, "delayed": 0, "critical": 0}
-    on_time = sum(1 for r in insights if (r.get("flag_status") or "").lower() == "on time")
-    delayed = sum(1 for r in insights if (r.get("flag_status") or "").lower() == "delayed")
-    critical = sum(1 for r in insights if (r.get("flag_status") or "").lower() == "critical")
-    return {"on_time": on_time, "delayed": delayed, "critical": critical, "insights_written": insights}
+        return {
+            "on_time": 0,
+            "delayed": 0,
+            "critical": 0,
+            "pending": 0,
+            "in_transit_total": 0,
+            "insights_written": [],
+            "error": None,
+        }
 
 
 def server(input: Inputs, output: Outputs, session: Session):
@@ -761,6 +1088,163 @@ def server(input: Inputs, output: Outputs, session: Session):
     analysis_result = reactive.value(None)
     is_loading = reactive.value(False)
     escalated_ids = reactive.value(set())
+    # What-If chat turns: {"role": "user", "text": str} | {"role": "assistant", "markdown": str}
+    whatif_chat_history = reactive.value([])
+
+    @reactive.extended_task
+    async def whatif_task(q_in: str, dr_in: str):
+        """Runs advisor off the main thread so the UI can show the user message immediately."""
+        return await asyncio.to_thread(
+            lambda: run_what_if_advisor(q_in, date_range=dr_in)
+        )
+
+    _WHATIF_DEMO_PROMPTS = {
+        "whatif_demo1": (
+            "What if we cut capacity at our busiest hub by about 20%? "
+            "For the selected baseline period, how would stressed on-time vs delayed deliveries look, "
+            "and what should we watch?"
+        ),
+        "whatif_demo2": (
+            "Give me an operational snapshot: how many shipments are in transit, "
+            "how many are flagged critical vs delayed, and which hubs show the most future exposure?"
+        ),
+        "whatif_demo3": (
+            "For the selected baseline period, what is the minimum investment to improve on-time performance, "
+            "and which lever should we fund first for the best ROI?"
+        ),
+        "whatif_demo4": (
+            "Where is shipment SHIP-001 right now? Which hub is it at or heading to, what is its priority, "
+            "and are there any delay or critical flags I should know about?"
+        ),
+    }
+
+    @reactive.effect
+    @reactive.event(input.whatif_demo1)
+    def _whatif_fill_demo1():
+        ui.update_text_area("whatif_question", value=_WHATIF_DEMO_PROMPTS["whatif_demo1"])
+
+    @reactive.effect
+    @reactive.event(input.whatif_demo2)
+    def _whatif_fill_demo2():
+        ui.update_text_area("whatif_question", value=_WHATIF_DEMO_PROMPTS["whatif_demo2"])
+
+    @reactive.effect
+    @reactive.event(input.whatif_demo3)
+    def _whatif_fill_demo3():
+        ui.update_text_area("whatif_question", value=_WHATIF_DEMO_PROMPTS["whatif_demo3"])
+
+    @reactive.effect
+    @reactive.event(input.whatif_demo4)
+    def _whatif_fill_demo4():
+        ui.update_text_area("whatif_question", value=_WHATIF_DEMO_PROMPTS["whatif_demo4"])
+
+    @reactive.effect
+    @reactive.event(input.whatif_run)
+    def _on_whatif_send():
+        q = (input.whatif_question() or "").strip()
+        if not q:
+            return
+        hist = list(whatif_chat_history())
+        hist.append({"role": "user", "text": q})
+        whatif_chat_history.set(hist)
+        dr = input.whatif_date_range() or "week"
+        whatif_task.invoke(q, dr)
+        ui.update_text_area("whatif_question", value="")
+
+    @reactive.effect
+    def _whatif_append_assistant_when_done():
+        st = whatif_task.status()
+        if st not in ("success", "error", "cancelled"):
+            return
+        hist = list(whatif_chat_history())
+        if not hist or hist[-1].get("role") != "user":
+            return
+        new_entry: dict | None = None
+        if st == "success":
+            r = whatif_task.result()
+            err = r.get("error")
+            md = (r.get("narrative_markdown") or "").strip()
+            if err and not md:
+                new_entry = {"role": "assistant", "markdown": f"**Error:** {err}"}
+            else:
+                if not md and err:
+                    md = f"## Error\n{err}"
+                new_entry = {"role": "assistant", "markdown": md or "_No response._"}
+        elif st == "error":
+            try:
+                ex = whatif_task.error()
+            except Exception:
+                ex = RuntimeError("Request failed")
+            new_entry = {"role": "assistant", "markdown": f"**Error:** {html.escape(str(ex))}"}
+        else:
+            new_entry = {"role": "assistant", "markdown": "_Request cancelled._"}
+        if new_entry:
+            whatif_chat_history.set(hist + [new_entry])
+
+    def _whatif_assistant_body_html(md: str) -> str:
+        md = (md or "").strip()
+        if not md:
+            md = "_No response._"
+        narrative_html = markdown.markdown(md, extensions=["nl2br", "fenced_code", "tables"])
+        return f'<div class="whatif-md">{narrative_html}</div>'
+
+    @render.ui
+    def whatif_chat():
+        st = whatif_task.status()
+        hist = whatif_chat_history()
+        inner: list = []
+
+        if len(hist) == 0 and st == "initial":
+            return ui.div(
+                ui.p("No session yet", class_="fw-semibold text-secondary mb-1"),
+                ui.p("Ask the agent below. It uses your data, RAG, tools, and simulation.", class_="whatif-chat-empty mb-0"),
+                class_="whatif-chat-window",
+            )
+
+        for msg in hist:
+            if msg.get("role") == "user":
+                inner.append(
+                    ui.div(
+                        ui.div(
+                            ui.div("User", class_="whatif-msg-meta"),
+                            ui.div(msg.get("text") or "", class_="whatif-msg-user"),
+                            class_="whatif-msg-col",
+                        ),
+                        class_="whatif-msg-row whatif-msg-row-user",
+                    )
+                )
+            elif msg.get("role") == "assistant":
+                body = _whatif_assistant_body_html(msg.get("markdown") or "")
+                inner.append(
+                    ui.div(
+                        ui.div("AI", class_="whatif-avatar"),
+                        ui.div(
+                            ui.div("Agent", class_="whatif-msg-meta"),
+                            ui.div(HTML(body), class_="whatif-msg-assistant"),
+                            class_="whatif-msg-col",
+                        ),
+                        class_="whatif-msg-row whatif-msg-row-assistant",
+                    )
+                )
+
+        if st == "running":
+            typing_inner = (
+                '<p class="small whatif-msg-loading mb-2 mb-0">Analyzing your scenario…</p>'
+                '<div class="whatif-typing"><span></span><span></span><span></span></div>'
+            )
+            inner.append(
+                ui.div(
+                    ui.div("AI", class_="whatif-avatar"),
+                    ui.div(
+                        ui.div("Agent", class_="whatif-msg-meta"),
+                        ui.div(HTML(typing_inner), class_="whatif-msg-assistant"),
+                        class_="whatif-msg-col",
+                    ),
+                    class_="whatif-msg-row whatif-msg-row-assistant",
+                )
+            )
+
+        return ui.div(*inner, class_="whatif-chat-window")
 
     @reactive.effect
     def load_cached_on_start():
@@ -843,7 +1327,10 @@ def server(input: Inputs, output: Outputs, session: Session):
                         ui.div(
                             ui.div(
                                 ui.span("Hub capacity", class_="param-label"),
-                                ui.span("Add more space so shipments don't get backed up.", class_="param-desc"),
+                                ui.span(
+                                    "Scale effective hub capacity with k (C = k × max in data): k=1.0 no change, k>1 adds headroom (e.g. k=1.2 = +20%).",
+                                    class_="param-desc",
+                                ),
                                 class_="param-row",
                             ),
                             ui.div(
@@ -938,9 +1425,15 @@ def server(input: Inputs, output: Outputs, session: Session):
         is_loading.set(True)
         try:
             result = run_analysis()
+            if not result.get("error"):
+                try:
+                    snap = get_in_transit_dashboard_summary()
+                    result = {**result, **snap}
+                except Exception:
+                    pass
             analysis_result.set(result)
         except Exception as e:
-            analysis_result.set({"on_time": 0, "delayed": 0, "critical": 0, "error": str(e)})
+            analysis_result.set({"on_time": 0, "delayed": 0, "critical": 0, "pending": 0, "in_transit_total": 0, "error": str(e)})
         finally:
             is_loading.set(False)
             should_run.set(False)
@@ -987,13 +1480,26 @@ def server(input: Inputs, output: Outputs, session: Session):
     @render_widget
     def donut():
         result = analysis_result()
-        if result is None or result.get("error"):
-            return _status_donut_with_confidence(0, 0, 0, [])
+        if result is None:
+            return _status_donut_with_confidence(0, 0, 0, [], 0)
+        if result.get("error"):
+            try:
+                s = get_in_transit_dashboard_summary()
+                return _status_donut_with_confidence(
+                    s["on_time"],
+                    s["delayed"],
+                    s["critical"],
+                    s["insights_written"],
+                    s["pending"],
+                )
+            except Exception:
+                return _status_donut_with_confidence(0, 0, 0, [], 0)
         return _status_donut_with_confidence(
             result.get("on_time", 0),
             result.get("delayed", 0),
             result.get("critical", 0),
             result.get("insights_written", []),
+            result.get("pending", 0),
         )
 
     @render.ui
@@ -1012,6 +1518,8 @@ def server(input: Inputs, output: Outputs, session: Session):
         on_time = result.get("on_time", 0)
         delayed = result.get("delayed", 0)
         critical = result.get("critical", 0)
+        pending = result.get("pending", 0)
+        in_transit_total = result.get("in_transit_total")
 
         all_insights = []
         try:
@@ -1019,10 +1527,20 @@ def server(input: Inputs, output: Outputs, session: Session):
         except Exception:
             pass
 
+        try:
+            in_transit_ids = {
+                r["shipment_id"]
+                for r in execute_query("SELECT shipment_id FROM shipments WHERE status = 'In Transit'")
+            }
+        except Exception:
+            in_transit_ids = set()
+
         insights_by_id = {r.get("shipment_id"): r for r in all_insights if r.get("shipment_id")}
         critical_list = [
-            r for r in all_insights
+            r
+            for r in all_insights
             if (r.get("flag_status") or "").lower() == "critical"
+            and r.get("shipment_id") in in_transit_ids
         ][:10]
         critical_ids = [r["shipment_id"] for r in critical_list]
 
@@ -1074,7 +1592,7 @@ def server(input: Inputs, output: Outputs, session: Session):
                         ui.input_action_button("rerun", "Re-run Analysis", class_="btn btn-outline-secondary btn-sm"),
                         class_="d-flex align-items-center justify-content-between mb-2",
                     ),
-                    _kpi_cards(on_time, delayed, critical),
+                    _kpi_cards(on_time, delayed, critical, in_transit_total, pending),
                     ui.p("AI confidence", class_="text-muted small mt-2 mb-1", style="font-size: 0.75rem;"),
                     output_widget("donut"),
                     ui.div(
@@ -1091,7 +1609,18 @@ def server(input: Inputs, output: Outputs, session: Session):
                         ui.div(
                             ui.span("On Time:", class_="fw-semibold text-success"),
                             " Shipments predicted to arrive on time",
-                            class_="mb-0",
+                            class_="mb-1",
+                        ),
+                        *(
+                            [
+                                ui.div(
+                                    ui.span("Gray:", class_="fw-semibold text-secondary"),
+                                    " In transit, no AI prediction stored yet — use Re-run Analysis.",
+                                    class_="mb-0",
+                                )
+                            ]
+                            if pending > 0
+                            else []
                         ),
                         class_="text-muted small mt-2 status-legend",
                         style="font-size: 0.72rem; line-height: 1.6;",
@@ -1437,9 +1966,9 @@ def server(input: Inputs, output: Outputs, session: Session):
         ranges = {
             "hub_capacity": (1.0, 2.0),
             "dispatch_time_at_hub": (0, 1),
-            "transit_mode": (0, 0.5),
-            "earlier_dispatch": (0, 24),
-            "risk_based_buffer": (0, 1.5),
+            "transit_mode": (0, 1.0),
+            "earlier_dispatch": (0, 720),
+            "risk_based_buffer": (0, 8.0),
         }
         curves = []
         sim_loading.set(True)

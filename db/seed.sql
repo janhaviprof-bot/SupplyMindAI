@@ -4,13 +4,13 @@
 -- Safe to re-run: ON CONFLICT DO NOTHING on PKs.
 
 INSERT INTO hubs (hub_name, lat, lon, max_capacity, current_load, status) VALUES
-    ('Chicago-Main', 41.8781, -87.6298, 120, 78, 'Open'),
-    ('Dallas-Hub', 32.7767, -96.7970, 90, 85, 'Congested'),
+    ('Chicago-Main', 41.8781, -87.6298, 120, 135, 'Open'),
+    ('Dallas-Hub', 32.7767, -96.7970, 90, 98, 'Congested'),
     ('Atlanta-South', 33.7490, -84.3880, 100, 55, 'Open'),
-    ('NYC-Port', 40.7128, -74.0060, 150, 120, 'Open'),
+    ('NYC-Port', 40.7128, -74.0060, 150, 162, 'Open'),
     ('Phoenix-West', 33.4484, -112.0740, 80, 40, 'Open'),
     ('Seattle-North', 47.6062, -122.3321, 95, 62, 'Open'),
-    ('Miami-Port', 25.7617, -80.1918, 110, 88, 'Congested')
+    ('Miami-Port', 25.7617, -80.1918, 110, 118, 'Congested')
 ON CONFLICT (hub_name) DO NOTHING;
 
 INSERT INTO shipments (shipment_id, material_type, priority_level, total_stops, current_stop_index, final_deadline, status) VALUES
@@ -120,15 +120,15 @@ INSERT INTO stops (stop_id, shipment_id, stop_number, hub_name, planned_arrival,
 ON CONFLICT (stop_id) DO NOTHING;
 
 INSERT INTO risks (risk_id, hub_name, category, severity, est_delay_hrs) VALUES
-    ('RISK-001', 'Dallas-Hub', 'Weather', 7, 4.5),
-    ('RISK-002', 'Dallas-Hub', 'Traffic', 5, 2.0),
-    ('RISK-003', 'Chicago-Main', 'Labor', 4, 1.5),
-    ('RISK-004', 'NYC-Port', 'Weather', 6, 3.0),
-    ('RISK-005', 'Phoenix-West', 'Traffic', 3, 1.0),
-    ('RISK-006', 'Atlanta-South', 'Equipment', 5, 2.5),
-    ('RISK-007', 'Miami-Port', 'Port Congestion', 8, 5.5),
-    ('RISK-008', 'Seattle-North', 'Weather', 5, 2.0),
-    ('RISK-009', 'Chicago-Main', 'Capacity', 6, 3.5)
+    ('RISK-001', 'Dallas-Hub', 'Weather', 7, 14.0),
+    ('RISK-002', 'Dallas-Hub', 'Traffic', 5, 8.0),
+    ('RISK-003', 'Chicago-Main', 'Labor', 4, 10.0),
+    ('RISK-004', 'NYC-Port', 'Weather', 6, 12.0),
+    ('RISK-005', 'Phoenix-West', 'Traffic', 3, 4.0),
+    ('RISK-006', 'Atlanta-South', 'Equipment', 5, 6.0),
+    ('RISK-007', 'Miami-Port', 'Port Congestion', 8, 16.0),
+    ('RISK-008', 'Seattle-North', 'Weather', 5, 4.0),
+    ('RISK-009', 'Chicago-Main', 'Capacity', 6, 12.0)
 ON CONFLICT (risk_id) DO NOTHING;
 
 INSERT INTO insights (insight_id, shipment_id, flag_status, predicted_arrival, reasoning, confidence) VALUES
@@ -145,3 +145,22 @@ INSERT INTO insights (insight_id, shipment_id, flag_status, predicted_arrival, r
     ('insight_SHIP-013', 'SHIP-013', 'On Time', NOW() + INTERVAL '36 hours', 'Short hop; pet food stable demand window.', 6),
     ('insight_SHIP-014', 'SHIP-014', 'Delayed', NOW() + INTERVAL '78 hours', 'Industrial motors; Dallas hub coupling with congestion index.', 7)
 ON CONFLICT (insight_id) DO NOTHING;
+
+-- Hub loads over nominal max_capacity so congestion term > 0 and hub_capacity k shows up in simulation.
+UPDATE hubs SET current_load = 135 WHERE hub_name = 'Chicago-Main';
+UPDATE hubs SET current_load = 98 WHERE hub_name = 'Dallas-Hub';
+UPDATE hubs SET current_load = 162 WHERE hub_name = 'NYC-Port';
+UPDATE hubs SET current_load = 118 WHERE hub_name = 'Miami-Port';
+
+-- Stronger risk hours so risk_based_buffer lever can recover a visible share of delayed cohort (re-apply if risks existed).
+UPDATE risks SET est_delay_hrs = 14.0 WHERE risk_id = 'RISK-001';
+UPDATE risks SET est_delay_hrs = 8.0 WHERE risk_id = 'RISK-002';
+UPDATE risks SET est_delay_hrs = 10.0 WHERE risk_id = 'RISK-003';
+UPDATE risks SET est_delay_hrs = 12.0 WHERE risk_id = 'RISK-004';
+UPDATE risks SET est_delay_hrs = 4.0 WHERE risk_id = 'RISK-005';
+UPDATE risks SET est_delay_hrs = 6.0 WHERE risk_id = 'RISK-006';
+UPDATE risks SET est_delay_hrs = 16.0 WHERE risk_id = 'RISK-007';
+UPDATE risks SET est_delay_hrs = 4.0 WHERE risk_id = 'RISK-008';
+UPDATE risks SET est_delay_hrs = 12.0 WHERE risk_id = 'RISK-009';
+
+-- Optional scale data: up to 200 more shipments SHIP-023..SHIP-222 (40 In Transit, 160 Delivered) — run seed_bulk_100.sql.

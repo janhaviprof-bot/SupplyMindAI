@@ -10,6 +10,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
+from analysis.simulation import HUB_CAPACITY_K_EXPLAINER_OPTIMIZATION
 from db.supabase_client import execute_query, get_connection
 
 MAX_SHIPMENTS = 200  # Cap for large date ranges
@@ -501,6 +502,8 @@ def call_openai_sim_insights(graph_data: dict) -> dict:
         })
 
     prompt = f"""You are a supply chain optimization expert. Analyze this simulation graph data.
+
+**Hub capacity (when a curve is capacity-related):** {HUB_CAPACITY_K_EXPLAINER_OPTIMIZATION}
 
 **Context:** Investment ($) vs On-time shipment count for different parameters. Higher on-time is better.
 

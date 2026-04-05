@@ -14,6 +14,8 @@ Quick lookup for terms used in SupplyMind AI, with plain-language explanations. 
 
 ## C
 
+**Capacity multiplier (k)** — For hub capacity simulation, **k** scales the hub’s nominal `max_capacity`: effective capacity **C_sim = k × max_capacity**. k=1.0 means no increase vs that nominal value; k=1.2 means 20% more effective capacity. Stress scenarios use k≤1 (e.g. k=0.8 = 20% below nominal). Investment curves use modeled dollars proportional to (k − grid minimum), not “free” capacity.
+
 **Confidence** — Same as *AI Confidence*. How sure the AI is about its prediction (1–10 or 0–100%). High means the data clearly supports the flag; low means it's ambiguous.
 
 **control_parameters** — The list of recommended changes from the optimization AI (e.g., "Hub Chicago: Increase capacity").

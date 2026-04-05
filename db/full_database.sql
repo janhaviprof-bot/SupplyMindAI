@@ -85,13 +85,13 @@ CREATE TABLE lever_investment (
 -- Reference "now": 2026-04-04 18:00:00+00 (matches seed.sql spacing; aligns with csv/*.csv exports)
 
 INSERT INTO hubs (hub_name, lat, lon, max_capacity, current_load, status) VALUES
-    ('Chicago-Main', 41.8781, -87.6298, 120, 78, 'Open'),
-    ('Dallas-Hub', 32.7767, -96.797, 90, 85, 'Congested'),
+    ('Chicago-Main', 41.8781, -87.6298, 120, 135, 'Open'),
+    ('Dallas-Hub', 32.7767, -96.797, 90, 98, 'Congested'),
     ('Atlanta-South', 33.749, -84.388, 100, 55, 'Open'),
-    ('NYC-Port', 40.7128, -74.006, 150, 120, 'Open'),
+    ('NYC-Port', 40.7128, -74.006, 150, 162, 'Open'),
     ('Phoenix-West', 33.4484, -112.074, 80, 40, 'Open'),
     ('Seattle-North', 47.6062, -122.3321, 95, 62, 'Open'),
-    ('Miami-Port', 25.7617, -80.1918, 110, 88, 'Congested');
+    ('Miami-Port', 25.7617, -80.1918, 110, 118, 'Congested');
 
 INSERT INTO shipments (shipment_id, material_type, priority_level, total_stops, current_stop_index, final_deadline, status) VALUES
     ('SHIP-001', 'Medical Supplies', 9, 4, 2, TIMESTAMPTZ '2026-04-06 18:00:00+00', 'In Transit'),
@@ -198,15 +198,15 @@ INSERT INTO stops (stop_id, shipment_id, stop_number, hub_name, planned_arrival,
     ('ST-S022-3', 'SHIP-022', 3, 'Dallas-Hub', TIMESTAMPTZ '2026-03-07 18:00:00+00', TIMESTAMPTZ '2026-03-07 18:00:00+00', TIMESTAMPTZ '2026-03-07 19:00:00+00', TIMESTAMPTZ '2026-03-07 19:00:00+00');
 
 INSERT INTO risks (risk_id, hub_name, category, severity, est_delay_hrs) VALUES
-    ('RISK-001', 'Dallas-Hub', 'Weather', 7, 4.5),
-    ('RISK-002', 'Dallas-Hub', 'Traffic', 5, 2.0),
-    ('RISK-003', 'Chicago-Main', 'Labor', 4, 1.5),
-    ('RISK-004', 'NYC-Port', 'Weather', 6, 3.0),
-    ('RISK-005', 'Phoenix-West', 'Traffic', 3, 1.0),
-    ('RISK-006', 'Atlanta-South', 'Equipment', 5, 2.5),
-    ('RISK-007', 'Miami-Port', 'Port Congestion', 8, 5.5),
-    ('RISK-008', 'Seattle-North', 'Weather', 5, 2.0),
-    ('RISK-009', 'Chicago-Main', 'Capacity', 6, 3.5);
+    ('RISK-001', 'Dallas-Hub', 'Weather', 7, 14.0),
+    ('RISK-002', 'Dallas-Hub', 'Traffic', 5, 8.0),
+    ('RISK-003', 'Chicago-Main', 'Labor', 4, 10.0),
+    ('RISK-004', 'NYC-Port', 'Weather', 6, 12.0),
+    ('RISK-005', 'Phoenix-West', 'Traffic', 3, 4.0),
+    ('RISK-006', 'Atlanta-South', 'Equipment', 5, 6.0),
+    ('RISK-007', 'Miami-Port', 'Port Congestion', 8, 16.0),
+    ('RISK-008', 'Seattle-North', 'Weather', 5, 4.0),
+    ('RISK-009', 'Chicago-Main', 'Capacity', 6, 12.0);
 
 INSERT INTO insights (insight_id, shipment_id, flag_status, predicted_arrival, reasoning, confidence) VALUES
     ('insight_SHIP-001', 'SHIP-001', 'Delayed', TIMESTAMPTZ '2026-04-06 10:00:00+00', 'Weather and congestion at Dallas-Hub; vaccine-adjacent lane pressure.', 7),

@@ -1,0 +1,84 @@
+# SupplyMind MCP server — FastAPI, course-style JSON-RPC POST /mcp
+# Run: uvicorn mcp_server.server:app --host 127.0.0.1 --port 8765
+# From inner SupplyMindAI dir (same as shiny), or set PYTHONPATH.
+
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+_inner = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(_inner.parent))
+sys.path.insert(0, str(_inner))
+
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
+
+from advisor.tool_defs import MCP_TOOLS, run_supply_tool_local, tool_result_to_text
+
+app = FastAPI()
+
+
+def run_tool(name: str, args: dict) -> str:
+    try:
+        out = run_supply_tool_local(name, args)
+        return tool_result_to_text(out)
+    except Exception as e:
+        raise ValueError(str(e)) from e
+
+
+@app.post("/mcp")
+async def mcp_post(request: Request):
+    body = await request.json()
+    method = body.get("method")
+    id_ = body.get("id")
+    if isinstance(method, str) and method.startswith("notifications/"):
+        return Response(status_code=202)
+    try:
+        if method == "initialize":
+            result = {
+                "protocolVersion": "2025-03-26",
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "supplymind-mcp", "version": "0.1.0"},
+            }
+        elif method == "ping":
+            result = {}
+        elif method == "tools/list":
+            result = {"tools": MCP_TOOLS}
+        elif method == "tools/call":
+            tool_result = run_tool(
+                body["params"]["name"],
+                body["params"].get("arguments") or {},
+            )
+            result = {
+                "content": [{"type": "text", "text": tool_result}],
+                "isError": False,
+            }
+        else:
+            raise ValueError(f"Method not found: {method}")
+    except Exception as e:
+        return JSONResponse(
+            {"jsonrpc": "2.0", "id": id_, "error": {"code": -32601, "message": str(e)}}
+        )
+    return JSONResponse({"jsonrpc": "2.0", "id": id_, "result": result})
+
+
+@app.options("/mcp")
+async def mcp_options():
+    return Response(
+        status_code=204,
+        headers={"Allow": "GET, POST, OPTIONS"},
+    )
+
+
+@app.get("/mcp")
+async def mcp_get():
+    return Response(
+        content=json.dumps(
+            {"error": "This MCP server uses stateless HTTP. Use POST."}
+        ),
+        status_code=405,
+        headers={"Allow": "GET, POST, OPTIONS"},
+        media_type="application/json",
+    )
