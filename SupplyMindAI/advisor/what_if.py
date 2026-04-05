@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 from advisor.rag import retrieve
-from advisor.tool_defs import OPENAI_TOOL_FUNCTIONS
 from advisor.tool_dispatch import get_dispatch
 from advisor.tools_impl import tool_get_delivered_cohort
 from analysis.simulation import HUB_CAPACITY_K_EXPLAINER_STRESS
@@ -168,6 +167,17 @@ def _planner_mode() -> str:
     return (os.environ.get("ADVISOR_PLANNER_MODE") or "json").strip().lower()
 
 
+def _planner_openai_tools() -> list[dict[str, Any]]:
+    """Light probe tools by default; set ADVISOR_PLANNER_PROBE_TOOLS=full to expose all tools to the planner."""
+    if (os.environ.get("ADVISOR_PLANNER_PROBE_TOOLS") or "").strip().lower() == "full":
+        from advisor.tool_defs import OPENAI_TOOL_FUNCTIONS
+
+        return OPENAI_TOOL_FUNCTIONS
+    from advisor.tool_defs import OPENAI_PLANNER_TOOL_FUNCTIONS
+
+    return OPENAI_PLANNER_TOOL_FUNCTIONS
+
+
 def _plan_pipeline_openai_tools(
     client,
     user_question: str,
@@ -176,14 +186,17 @@ def _plan_pipeline_openai_tools(
     trace: list[dict[str, str]],
     dispatch,
 ) -> tuple[str, str]:
-    sys_m = """You are the orchestration planner. Optionally call tools to inspect live logistics data.
+    sys_m = """You are the orchestration planner. You may call ONLY lightweight tools to inspect data:
+list_hub_names, get_in_transit_aggregate, get_delivered_cohort_summary (use date_range from the user message).
+Do NOT attempt capacity stress or optimization simulations here—those run automatically AFTER you pick a pipeline.
+
 You MUST finish by calling submit_planner_decision exactly once with:
 - pipeline: full_stress | operational_snapshot | delivered_analytics | optimization_simulation
 - reason: short sentence
 
 full_stress = what-if / capacity / simulation. operational_snapshot = current in-transit picture only.
 delivered_analytics = historical on-time/delayed for the baseline period, no simulation.
-optimization_simulation = ROI / minimum investment / which lever — uses run_optimization_simulation."""
+optimization_simulation = ROI / minimum investment / which lever."""
     messages: list[dict[str, Any]] = [
         {"role": "system", "content": sys_m},
         {
@@ -191,12 +204,11 @@ optimization_simulation = ROI / minimum investment / which lever — uses run_op
             "content": (
                 f"User question: {user_question}\n\n"
                 f"RAG excerpts:\n{chr(10).join(rag_chunks[:5])}\n\n"
-                f"Use date_range={date_range!r} when calling get_delivered_cohort_summary or "
-                f"run_optimization_simulation if needed."
+                f"Use date_range={date_range!r} when calling get_delivered_cohort_summary."
             ),
         },
     ]
-    tools = OPENAI_TOOL_FUNCTIONS
+    tools = _planner_openai_tools()
     for _ in range(8):
         resp = client.chat.completions.create(
             model="gpt-4o-mini",

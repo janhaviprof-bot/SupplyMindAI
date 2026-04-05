@@ -188,6 +188,20 @@ OPENAI_TOOL_FUNCTIONS: list[dict[str, Any]] = [
     ),
 ]
 
+# Planner (openai_tools mode): lightweight probes only. Stress/optimization run after routing.
+_PLANNER_TOOL_NAMES: frozenset[str] = frozenset(
+    {
+        "list_hub_names",
+        "get_in_transit_aggregate",
+        "get_delivered_cohort_summary",
+        "submit_planner_decision",
+    }
+)
+
+OPENAI_PLANNER_TOOL_FUNCTIONS: list[dict[str, Any]] = [
+    t for t in OPENAI_TOOL_FUNCTIONS if t["function"]["name"] in _PLANNER_TOOL_NAMES
+]
+
 
 def run_supply_tool_local(name: str, arguments: Optional[dict[str, Any]] = None) -> Any:
     args = arguments or {}
