@@ -1,0 +1,6 @@
+risk_id,hub_name,category,severity,est_delay_hrs
+RISK-001,Dallas-Hub,Weather,7,4.5
+RISK-002,Dallas-Hub,Traffic,5,2.0
+RISK-003,Chicago-Main,Labor,4,1.5
+RISK-004,NYC-Port,Weather,6,3.0
+RISK-005,Phoenix-West,Traffic,3,1.0

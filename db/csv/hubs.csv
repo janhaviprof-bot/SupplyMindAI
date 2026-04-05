@@ -1,0 +1,6 @@
+hub_name,lat,lon,max_capacity,current_load,status
+Chicago-Main,41.8781,-87.6298,120,78,Open
+Dallas-Hub,32.7767,-96.797,90,85,Congested
+Atlanta-South,33.749,-84.388,100,55,Open
+NYC-Port,40.7128,-74.006,150,120,Open
+Phoenix-West,33.4484,-112.074,80,40,Open
