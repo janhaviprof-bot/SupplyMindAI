@@ -12,6 +12,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Optional
 
+from advisor.functions import agent_completion_with_tools, agent_run
 from advisor.rag import retrieve
 from advisor.tool_dispatch import get_dispatch
 from advisor.tools_impl import tool_get_delivered_cohort
@@ -37,39 +38,6 @@ def _get_openai_client():
     from openai import OpenAI
 
     return OpenAI(api_key=api_key)
-
-
-def _strip_json_fence(text: str) -> str:
-    text = (text or "").strip()
-    if text.startswith("```"):
-        text = text.split("\n", 1)[1].rsplit("```", 1)[0]
-    return text.strip()
-
-
-def _call_json_agent(client, system: str, user: str, temperature: float = 0.2) -> dict:
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        temperature=temperature,
-    )
-    text = response.choices[0].message.content or "{}"
-    text = _strip_json_fence(text)
-    return json.loads(text)
-
-
-def _call_text_agent(client, system: str, user: str, temperature: float = 0.35) -> str:
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        temperature=temperature,
-    )
-    return (response.choices[0].message.content or "").strip()
 
 
 _NARRATION_MARKDOWN_SHAPE = """Output markdown in this exact shape:
@@ -143,7 +111,7 @@ Retrieved context (RAG excerpts):
 {chr(10).join(rag_chunks[:5])}
 """
     try:
-        plan = _call_json_agent(client, sys_pl, user_pl, temperature=0.1)
+        plan = agent_run(client, sys_pl, user_pl, temperature=0.1, response_type="json")
     except Exception:
         return "full_stress", "planner_parse_failed_default_full_stress"
 
@@ -210,11 +178,10 @@ optimization_simulation = ROI / minimum investment / which lever."""
     ]
     tools = _planner_openai_tools()
     for _ in range(8):
-        resp = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=messages,
-            tools=tools,
-            tool_choice="auto",
+        resp = agent_completion_with_tools(
+            client,
+            messages,
+            tools,
             temperature=0.1,
         )
         msg = resp.choices[0].message
@@ -342,7 +309,7 @@ In-transit aggregate (JSON):
 Known hub names (first 40): {json.dumps(known_hubs[:40])}
 """
     try:
-        narrative = _call_text_agent(client, sys_n, user_n, temperature=0.35)
+        narrative = agent_run(client, sys_n, user_n, temperature=0.35, response_type="text")
     except Exception as e:
         narrative = f"## Error\nFailed to generate narration: {e}"
 
@@ -403,7 +370,7 @@ metrics: {json.dumps(metrics, default=str)}
 Hub sample: {json.dumps(known_hubs[:20])}
 """
     try:
-        analytics = _call_json_agent(client, sys_a, user_a, temperature=0.2)
+        analytics = agent_run(client, sys_a, user_a, temperature=0.2, response_type="json")
     except Exception as e:
         analytics = {
             "headline": "Delivered cohort loaded.",
@@ -432,7 +399,7 @@ Hard numbers:
 - In-transit count: {in_transit.get('in_transit_count')}
 """
     try:
-        narrative = _call_text_agent(client, sys_n, user_n, temperature=0.35)
+        narrative = agent_run(client, sys_n, user_n, temperature=0.35, response_type="text")
     except Exception as e:
         narrative = f"## Error\nFailed to generate narration: {e}"
 
@@ -544,7 +511,7 @@ Optimization + simulation bundle (JSON):
 {json.dumps(payload, indent=2, default=str)[:22000]}
 """
     try:
-        narrative = _call_text_agent(client, sys_n, user_n, temperature=0.35)
+        narrative = agent_run(client, sys_n, user_n, temperature=0.35, response_type="text")
     except Exception as e:
         narrative = f"## Error\nFailed to generate narration: {e}"
 
@@ -608,7 +575,7 @@ Hub capacity semantics:
 """
 
     try:
-        pred = _call_json_agent(client, sys1, user1, temperature=0.15)
+        pred = agent_run(client, sys1, user1, temperature=0.15, response_type="json")
     except Exception as e:
         result["error"] = f"Prediction agent failed: {e}"
         return result
@@ -674,7 +641,7 @@ Stress sim: {json.dumps(stress, indent=2, default=str)}
 """
 
     try:
-        risk = _call_json_agent(client, sys2, user2, temperature=0.2)
+        risk = agent_run(client, sys2, user2, temperature=0.2, response_type="json")
     except Exception as e:
         risk = {"severity_overall": "medium", "critical_focus": [], "mitigations": [], "confidence": 5, "_error": str(e)}
 
@@ -697,7 +664,7 @@ Risk: {json.dumps(risk, indent=2)}
 """
 
     try:
-        sim_agent = _call_json_agent(client, sys3, user3, temperature=0.2)
+        sim_agent = agent_run(client, sys3, user3, temperature=0.2, response_type="json")
     except Exception as e:
         sim_agent = {
             "headline": "Simulation results computed.",
@@ -740,7 +707,7 @@ Hub capacity semantics:
 """
 
     try:
-        narrative = _call_text_agent(client, sys4, user4, temperature=0.35)
+        narrative = agent_run(client, sys4, user4, temperature=0.35, response_type="text")
     except Exception as e:
         narrative = f"## Error\nFailed to generate narration: {e}"
 
