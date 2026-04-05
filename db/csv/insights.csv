@@ -1,4 +1,13 @@
 insight_id,shipment_id,flag_status,predicted_arrival,reasoning,confidence
-insight_SHIP-001,SHIP-001,Delayed,2026-04-06 10:00:00+00,Weather and congestion at Dallas-Hub.,7
-insight_SHIP-003,SHIP-003,On Time,2026-04-07 14:00:00+00,Route clear; hubs within capacity.,8
-insight_SHIP-004,SHIP-004,On Time,2026-04-05 16:00:00+00,Minor delay absorbed at stop 2.,6
+insight_SHIP-001,SHIP-001,Delayed,2026-04-06 10:00:00+00,"Weather and congestion at Dallas-Hub; vaccine-adjacent lane pressure.",7
+insight_SHIP-003,SHIP-003,On Time,2026-04-07 14:00:00+00,"Route clear; hubs within capacity after NYC departure.",8
+insight_SHIP-004,SHIP-004,Delayed,2026-04-05 10:00:00+00,"Dallas congestion absorbing dwell time; tight window to Chicago.",6
+insight_SHIP-006,SHIP-006,Delayed,2026-04-07 02:00:00+00,"Cross-country lane; Seattle handoff on schedule but Midwest risk.",7
+insight_SHIP-007,SHIP-007,On Time,2026-04-06 02:00:00+00,"Miami–Atlanta cleared; monitoring Dallas weather.",8
+insight_SHIP-008,SHIP-008,On Time,2026-04-08 10:00:00+00,"Low-priority bulk; flexible slotting into Chicago.",5
+insight_SHIP-009,SHIP-009,Critical,2026-04-06 04:00:00+00,"High-priority cold chain exposure on Dallas–Miami segment.",9
+insight_SHIP-010,SHIP-010,On Time,2026-04-05 08:00:00+00,"Final NYC leg; Atlanta and Dallas on plan.",7
+insight_SHIP-011,SHIP-011,Critical,2026-04-06 20:00:00+00,"Semiconductor security lane; NYC origin dwell under watch.",9
+insight_SHIP-012,SHIP-012,Delayed,2026-04-09 06:00:00+00,"Agricultural season surge at Phoenix; cascading to Miami.",6
+insight_SHIP-013,SHIP-013,On Time,2026-04-06 08:00:00+00,"Short hop; pet food stable demand window.",6
+insight_SHIP-014,SHIP-014,Delayed,2026-04-08 02:00:00+00,"Industrial motors; Dallas hub coupling with congestion index.",7

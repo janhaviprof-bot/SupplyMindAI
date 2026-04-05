@@ -4,3 +4,7 @@ RISK-002,Dallas-Hub,Traffic,5,2.0
 RISK-003,Chicago-Main,Labor,4,1.5
 RISK-004,NYC-Port,Weather,6,3.0
 RISK-005,Phoenix-West,Traffic,3,1.0
+RISK-006,Atlanta-South,Equipment,5,2.5
+RISK-007,Miami-Port,Port Congestion,8,5.5
+RISK-008,Seattle-North,Weather,5,2.0
+RISK-009,Chicago-Main,Capacity,6,3.5
