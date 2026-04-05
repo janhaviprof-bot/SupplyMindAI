@@ -1,9 +1,11 @@
-# SupplyMind — full database snapshot (all tables, all values)
+# SupplyMind — complete reference data (all tables, all columns, all rows)
 
-**Reference time for timestamps below:** `2026-04-04 18:00:00+00` (UTC).  
-Empty cells mean **SQL NULL** (same as blank fields in `csv/stops.csv`).
+This file is a **full** human-readable copy of the canonical demo database (nothing omitted).  
+**Reference time for timestamps:** `2026-04-04 18:00:00+00` (UTC). Empty table cells = **SQL NULL**.
 
-For machine import use **`schema.sql`** + **`seed.sql`** or **`csv/*.csv`** — see [`REPLICATE_DATASET.md`](REPLICATE_DATASET.md).
+**One-shot SQL (schema + every value in one file):** [`full_database.sql`](full_database.sql) — paste once in Supabase SQL Editor.
+
+For other import paths see [`REPLICATE_DATASET.md`](REPLICATE_DATASET.md). To export **whatever is currently in your live Supabase** to SQL, run `py scripts/dump_supplymind_to_sql.py` from the repo root (uses `.env`).
 
 ---
 

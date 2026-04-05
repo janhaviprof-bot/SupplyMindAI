@@ -4,7 +4,7 @@
 --
 -- Usage: Supabase → SQL Editor → paste → Run.
 -- Then run seed.sql for demo rows (optional but recommended).
--- Human-readable data copy: DATA_SNAPSHOT.md, DATA_SNAPSHOT.txt, csv/*.csv
+-- Human-readable / full SQL: DATA_SNAPSHOT.md, DATA_SNAPSHOT.txt, csv/*.csv, full_database.sql
 
 -- Order: hubs → shipments → risks, stops, insights (FKs)
 

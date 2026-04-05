@@ -8,16 +8,24 @@ Use this when setting up a **new Supabase project** or a **fresh clone** of the 
 - This repository cloned locally.
 - **Do not** commit secrets. Keep `POSTGRES_CONNECTION_STRING` only in `.env` (already gitignored).
 
-## Step 1 — Create tables
+## Step 1 — Create tables and load **all** data (easiest: one file)
+
+**Option A — Complete database in one paste (recommended)**
 
 1. Open [Supabase Dashboard](https://supabase.com/dashboard) → your project → **SQL Editor**.
-2. Open the file **`db/schema.sql`** from this repo.
-3. Copy **the entire file**, paste into the SQL Editor, click **Run**.
-4. Confirm there are no errors. You should have tables: `hubs`, `shipments`, `stops`, `risks`, `insights`.
+2. Open **`db/full_database.sql`**, copy **everything**, paste, **Run**.  
+   This **drops** existing SupplyMind tables if present, recreates them, and inserts **every row** with fixed timestamps.
+
+**Option B — Schema only, then data separately**
+
+1. Run **`db/schema.sql`** in SQL Editor (creates empty tables).
+2. Continue with Step 2 below.
 
 ## Step 2 — Load data (pick one method)
 
-### Method A — SQL seed (recommended: relative dates)
+Skip this if you already ran **`full_database.sql`** in Step 1 Option A.
+
+### Method A — SQL seed (relative dates)
 
 1. In **SQL Editor**, open **`db/seed.sql`**, copy all, paste, **Run**.
 2. Rows use `NOW()` so deadlines and stop times stay realistic over time.
@@ -49,11 +57,13 @@ If a table already has rows, clear it first (or use a new project) to avoid dupl
 
 | File | Role |
 |------|------|
-| `schema.sql` | Table definitions |
-| `seed.sql` | Inserts (Method A) |
-| `csv/*.csv` | Same logical data, fixed UTC times (Method B) |
-| `DATA_SNAPSHOT.md` | **Full** human-readable copy: every table, every row, every column |
-| `DATA_SNAPSHOT.txt` | Same data, tab-separated (sections per table) |
+| **`full_database.sql`** | **Complete DB:** DROP + CREATE + **all** INSERTs (single run) |
+| `schema.sql` | Table definitions only (`CREATE IF NOT EXISTS`) |
+| `seed.sql` | Inserts with `NOW()`-relative times |
+| `csv/*.csv` | Same logical data, fixed UTC times (Table Editor import) |
+| `DATA_SNAPSHOT.md` | Human-readable: every table, row, column |
+| `DATA_SNAPSHOT.txt` | Tab-separated sections |
+| `live_complete_dump.sql` | (optional) generated from **your** live DB — see `scripts/dump_supplymind_to_sql.py` |
 
 ## Verify
 
@@ -78,10 +88,11 @@ Paste the block below so the assistant knows what to do without re-deriving it:
 ```
 This repo includes database replication assets under db/.
 
-To replicate the SupplyMind dataset in Supabase:
-1. Run db/schema.sql in Supabase SQL Editor (creates tables).
-2. Load data with EITHER db/seed.sql in SQL Editor OR import db/csv/*.csv via Table Editor in order: hubs, shipments, stops, risks, insights.
-3. Set POSTGRES_CONNECTION_STRING in local .env from Supabase Connect → Postgres URI (never commit .env).
+To replicate the COMPLETE SupplyMind database (schema + all rows) in Supabase:
+1. Run db/full_database.sql once in SQL Editor (DROP/CREATE + all INSERTs). OR use db/schema.sql then db/seed.sql or db/csv/*.csv per db/REPLICATE_DATASET.md.
+2. Set POSTGRES_CONNECTION_STRING in local .env (never commit .env).
+
+To export live DB to SQL: py scripts/dump_supplymind_to_sql.py
 
 Details: db/REPLICATE_DATASET.md
 ```
