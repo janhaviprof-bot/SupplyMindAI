@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "locale": "English_United States.1252",
+  "metadata": {
+    "appmode": "python-fastapi",
+    "entrypoint": "mcp_server.server:app"
+  },
+  "python": {
+    "version": "3.14.2",
+    "package_manager": {
+      "name": "pip",
+      "version": "25.3",
+      "package_file": "requirements.txt"
+    }
+  },
+  "files": {
+    "requirements.txt": {
+      "checksum": "b2a20995b797112f7b7729891fa9e3da"
+    },
+    "README.md": {
+      "checksum": "8a49d44ece668dc259008352690eaccb"
+    },
+    "advisor/__init__.py": {
+      "checksum": "ca2b9fdb93051e8c6d47ae78b0ff4f76"
+    },
+    "advisor/__pycache__/__init__.cpython-314.pyc": {
+      "checksum": "e29a43eae0e56e6f1dbbec55c1ee1c00"
+    },
+    "advisor/__pycache__/rag.cpython-314.pyc": {
+      "checksum": "90858a87b3bcb2645b3195b3b9ad09b1"
+    },
+    "advisor/__pycache__/tool_defs.cpython-314.pyc": {
+      "checksum": "dff51390b573bea941c8f9d7f27fe4f9"
+    },
+    "advisor/__pycache__/tool_dispatch.cpython-314.pyc": {
+      "checksum": "cea9eedcad626f6a17a43e71a8fece2a"
+    },
+    "advisor/__pycache__/tools_impl.cpython-314.pyc": {
+      "checksum": "37a2c477823d8d43e92e0ac5d58ec03e"
+    },
+    "advisor/__pycache__/what_if.cpython-314.pyc": {
+      "checksum": "76c9495d2a667e4657c9b354164e6bc5"
+    },
+    "advisor/rag.py": {
+      "checksum": "1da49d2b4042429105a236a6b17c1880"
+    },
+    "advisor/tool_defs.py": {
+      "checksum": "a113e3d02c634acd6711cbc05cf4cf5f"
+    },
+    "advisor/tool_dispatch.py": {
+      "checksum": "32b4612b4b0187b1173d6f22422753fc"
+    },
+    "advisor/tools_impl.py": {
+      "checksum": "b1c45abdb9ad9751bb111e1eb50c5a5e"
+    },
+    "advisor/what_if.py": {
+      "checksum": "39994b3a9a9865aa78e0458e9850d355"
+    },
+    "analysis/__init__.py": {
+      "checksum": "b1631765bd3c838ef3665afeb90ddad9"
+    },
+    "analysis/__pycache__/__init__.cpython-314.pyc": {
+      "checksum": "27fe2a1c5e292a2c6016bcbb7708fd06"
+    },
+    "analysis/__pycache__/optimization_pipeline.cpython-314.pyc": {
+      "checksum": "63cf51066193c5996cd45f3345e9738c"
+    },
+    "analysis/__pycache__/pipeline.cpython-314.pyc": {
+      "checksum": "f176b78987a48625a7e926637f765159"
+    },
+    "analysis/__pycache__/simulation.cpython-314.pyc": {
+      "checksum": "34d1952a2d5a34a91b93745c7f8c25ab"
+    },
+    "analysis/optimization_pipeline.py": {
+      "checksum": "f174bb533b93e8f1dafff2e02e12c2b5"
+    },
+    "analysis/pipeline.py": {
+      "checksum": "082b291f32432200a05b41684baa5cf2"
+    },
+    "analysis/simulation.py": {
+      "checksum": "e6c47433c736181e632e718a2363e0d4"
+    },
+    "app.py": {
+      "checksum": "d48bcd0a532014390e71c7609c389158"
+    },
+    "docs/ARCHITECTURE_OVERVIEW.md": {
+      "checksum": "973a7da051bfb9caae77cf96a4fe0bc9"
+    },
+    "docs/DOCUMENTATION_INDEX.md": {
+      "checksum": "650bd3c86c619df17f932a566114ca1a"
+    },
+    "docs/GETTING_STARTED.md": {
+      "checksum": "adea803cc6baaca09f12abce72281b38"
+    },
+    "docs/GLOSSARY.md": {
+      "checksum": "725b1d3f544103872deda116e7e68854"
+    },
+    "docs/TROUBLESHOOTING.md": {
+      "checksum": "b10ece9025eb8c550ccd58ef0b49caa6"
+    },
+    "docs/context.md": {
+      "checksum": "94a4413623dd29f014a3014a27055069"
+    },
+    "docs/icons.md": {
+      "checksum": "1ca72104b405d057e09a463d6f9e15bd"
+    },
+    "docs/optimization-simulation.md": {
+      "checksum": "1f629b5d6c9179c1f37d6348e7ee9214"
+    },
+    "docs/predictions.md": {
+      "checksum": "e47c206f8b8c0fcf6f7513c4072ae409"
+    },
+    "logo/Glowing brain inside geometric cube.png": {
+      "checksum": "11686c09d5b2c4f31e022f31d6012278"
+    },
+    "logo/supplymind-logo.png": {
+      "checksum": "de0e3ce2e19f36ef4b5b1e4ea9797da3"
+    },
+    "mcp_server/README.md": {
+      "checksum": "c44bfbb5c2350f6fe5bb2e20d6c65401"
+    },
+    "mcp_server/__init__.py": {
+      "checksum": "d41d8cd98f00b204e9800998ecf8427e"
+    },
+    "mcp_server/__pycache__/__init__.cpython-314.pyc": {
+      "checksum": "8b3427cfc5a1560731b385493abd68d4"
+    },
+    "mcp_server/__pycache__/runme.cpython-314.pyc": {
+      "checksum": "d4b7dc36ce8a31abae3c1a5833d3c520"
+    },
+    "mcp_server/__pycache__/server.cpython-314.pyc": {
+      "checksum": "e84180d22126aa23dc98bc4c17a24ee8"
+    },
+    "mcp_server/deployme.py": {
+      "checksum": "c681e88bddd58a1751727110cea0bddf"
+    },
+    "mcp_server/runme.py": {
+      "checksum": "7ec82e4904e7d33314f98bd6526c7e73"
+    },
+    "mcp_server/server.py": {
+      "checksum": "ba029f9d82f255893a4d0e0a23c43277"
+    },
+    "prerequisites.txt": {
+      "checksum": "5b070216a39cd3f7f94e663a26f89684"
+    }
+  }
+}
