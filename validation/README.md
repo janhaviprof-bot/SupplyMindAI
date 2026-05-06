@@ -16,6 +16,36 @@ The plan that drove this implementation lives at
 | **shipment** | `_call_openai` in [`SupplyMindAI/analysis/pipeline.py`](../SupplyMindAI/analysis/pipeline.py) | The `flag` + `reasoning` for in-transit shipments (Card 1 in the app) |
 | **optimization** | `_call_openai_recommendations` in [`SupplyMindAI/analysis/optimization_pipeline.py`](../SupplyMindAI/analysis/optimization_pipeline.py) | The `summary` + `control_parameters` for delivered shipments (Card 3 in the app) |
 
+## Validation Criteria Table
+
+The validator is **not** a generic Likert rubric ("overall quality 1-5").
+Instead, each score dimension is domain-specific and tied to logistics utility.
+
+### Shipment criteria
+
+| Dimension | Description | Scale / Measurement | Benchmark |
+|---|---|---|---|
+| `flag_accuracy` | Whether On Time / Delayed / Critical matches shipment evidence | AI score 0-5 | Higher is better |
+| `grounding_specificity` | Whether reasoning uses real hubs/risks from source data | AI score 0-5 | Higher is better |
+| `format_compliance` | Whether reasoning follows required shipment style/constraints | AI score 0-5 | Higher is better |
+| `actionability` | Whether ops team can act from the explanation | AI score 0-5 | Higher is better |
+| `succinctness` | Whether response is concise without filler | AI score 0-5 | Higher is better |
+| `policy_compliant` | Hard-rule check (`Critical` gating, arrival/deadline logic) | Deterministic boolean | `True` preferred |
+
+### Optimization criteria
+
+| Dimension | Description | Scale / Measurement | Benchmark |
+|---|---|---|---|
+| `lever_compliance` | Whether recommendations map to supported control levers | AI score 0-5 | Higher is better |
+| `data_grounding` | Whether summary/recommendations cite real metrics/hubs/categories | AI score 0-5 | Higher is better |
+| `specificity` | Whether actions name concrete routes/hubs | AI score 0-5 | Higher is better |
+| `actionability` | Whether recommendations are practical to implement | AI score 0-5 | Higher is better |
+| `formatting_compliance` | Whether output structure/format follows expected style | AI score 0-5 | Higher is better |
+| `summary_quality` | Quality and clarity of optimization summary | AI score 0-5 | Higher is better |
+| `simulatable` | Whether `control_parameters` parse into simulator params | Deterministic boolean | `True` preferred |
+
+`overall_score` is computed as the mean of AI-scored numeric criteria.
+
 ## Quick start
 
 ```powershell
@@ -86,6 +116,14 @@ adds a small targeted addendum for B and C.
 - **C (negative control)** - intentionally weaker comparator for stress-testing
   statistical separation (keeps valid JSON but encourages generic, low-specificity output).
 
+## Experimental Design
+
+- **Prompt comparison:** A (baseline) vs B (stricter) vs C (intentionally weaker comparator).
+- **Experiments:** shipment reasoning and optimization recommendations.
+- **Target sample size:** default `--n 30` samples per prompt.
+- **Target scores per experiment:** `30 x 3 = 90` scored rows (can be lower if API failures occur).
+- **Scoring unit:** one scored row per `(sample_id, prompt_id)` pair.
+
 ## Custom rubrics (not generic Likert)
 
 ### Shipment rubric
@@ -121,6 +159,17 @@ For each experiment, `03_statistical_comparison.py` runs:
 3. Pairwise t-tests (A-vs-B, A-vs-C, B-vs-C) with Holm correction.
 4. Verdict block: best prompt + p-value.
 
+### Hypothesis used
+
+- **Null (H0):** prompt means are equal (`mu_A = mu_B = mu_C`).
+- **Alternative (H1):** at least one prompt mean differs.
+- **Decision rule:** reject H0 if ANOVA p-value < 0.05.
+- Pairwise t-tests are used after ANOVA to see where differences are strongest.
+
+Interpretation guidance:
+- Significant ANOVA + higher mean -> preferred prompt.
+- Non-significant ANOVA -> no statistical evidence that prompts differ.
+
 ## Cost / runtime
 
 | Run | Calls | Approx. cost | Approx. wall-clock |
@@ -140,6 +189,22 @@ Cost optimizations baked in:
 - `--n N` smoke-test mode for cheap iteration.
 - Reliability subset is just 5 reports x 2 repeats per experiment.
 - Reviewer responses are capped at **300 output tokens** (output is small JSON).
+
+## System Design (AI reviewer role)
+
+The system has three stages:
+
+1. **Generation (`01_generate_reports.py`)**  
+   Runs prompt A/B/C for each sample and stores raw model outputs.
+2. **AI QC (`02_ai_quality_control.py`)**  
+   Uses a reviewer model to score each output against the rubric and write structured scores.
+3. **Stats (`03_statistical_comparison.py`)**  
+   Runs ANOVA + pairwise t-tests and writes markdown summary files.
+
+AI reviewer role:
+- Acts as a consistent evaluator for rubric dimensions.
+- Produces structured JSON scores (0-5 criteria + details).
+- Is combined with deterministic rule checks (`policy_compliant`, `simulatable`) to reduce subjective noise.
 
 ## Useful CLI flags
 
@@ -162,6 +227,16 @@ Cost optimizations baked in:
 `03_statistical_comparison.py`:
 - `--experiment shipment | optimization | both`
 
+## Technical Details
+
+- **Runtime:** Python 3.x
+- **Primary packages:** `openai`, `pandas`, `scipy`, `pingouin`, `psycopg2-binary`, `python-dotenv`
+- **Environment variables required:**
+  - `OPENAI_API_KEY`
+  - `POSTGRES_CONNECTION_STRING` (or `DIRECT_URL` / `DATABASE_URL` as used by DB client)
+- **Data outputs:** `validation/data/*.csv`, `validation/data/*_stats_summary.md`, and plot images.
+- **Rate-limit handling:** generation and reviewer calls include retry/backoff for transient 429 errors.
+
 ## How this maps to the assignment rubric
 
 | Rubric criterion | Where it lives |
@@ -171,6 +246,155 @@ Cost optimizations baked in:
 | Experimental design | [`prompts.py`](prompts.py) (A/B/C) + [`sampling.py`](sampling.py) (>=20 samples per prompt) -> 60+ scores per experiment |
 | Statistical analysis | [`03_statistical_comparison.py`](03_statistical_comparison.py) - ANOVA + pairwise t-tests |
 | Implementation | This folder. Working CLI scripts that import the existing app pipelines via `sys.path` adjustment, so the production app is unchanged. |
+
+## Usage Instructions (Step-by-step)
+
+1. **Install dependencies**
+   ```powershell
+   pip install -r validation/requirements.txt
+   ```
+2. **Set environment**
+   - Ensure project root `.env` contains `OPENAI_API_KEY` and DB connection variable.
+3. **Run experiment generation + scoring**
+   ```powershell
+   py validation/run_validation.py --phase 1
+   ```
+4. **Run statistical analysis**
+   ```powershell
+   py validation/run_validation.py --phase 2
+   ```
+5. **Inspect outputs**
+   - `validation/data/shipment_stats_summary.md`
+   - `validation/data/opt_stats_summary.md`
+   - `validation/data/shipment_scores.csv`
+   - `validation/data/opt_scores.csv`
+
+Recommended for prompt/rubric edits:
+```powershell
+py validation/run_validation.py --phase 1 --force
+py validation/run_validation.py --phase 2
+```
+
+## Interpreting Outputs
+
+### Primary files to review
+
+- `validation/data/shipment_stats_summary.md`  
+  Final statistical comparison for shipment prompt variants.
+- `validation/data/opt_stats_summary.md`  
+  Final statistical comparison for optimization prompt variants.
+- `validation/data/shipment_scores.csv` and `validation/data/opt_scores.csv`  
+  Row-level rubric scores used as statistical input.
+
+### How to read the summary markdown
+
+1. **Descriptive table** shows mean and spread by prompt.
+2. **ANOVA section** answers: "Is there any significant difference among A/B/C?"
+3. **Pairwise t-tests** show where largest pair-level differences appear.
+4. **Verdict** states best prompt by mean and significance status.
+
+### Expected interpretation pattern
+
+- If ANOVA p-value < 0.05, prompt choice has significant effect.
+- Then use pairwise t-tests + means to identify strongest/best variant.
+- If ANOVA p-value >= 0.05, treat variants as statistically similar for this run.
+
+## Data Contracts (CSV schemas)
+
+### `shipment_reports.csv` (generation output)
+
+Key columns:
+- `experiment`, `prompt_id`, `sample_id`, `shipment_id`, `run_id`
+- generated fields: `flag`, `predicted_arrival`, `reasoning`, `confidence`
+- debug fields: `raw_response`, `payload_json`, `generation_ts`, `error`
+
+### `shipment_scores.csv` (review output)
+
+Key columns:
+- keys: `sample_id`, `prompt_id`, `run_id`
+- rubric: `flag_accuracy`, `grounding_specificity`, `format_compliance`,
+  `actionability`, `succinctness`, `policy_compliant`
+- aggregate/debug: `overall_score`, `reviewer_details`, `review_ts`, `review_error`
+
+### `opt_reports.csv` (generation output)
+
+Key columns:
+- `experiment`, `prompt_id`, `sample_id`, `range_id`, `run_id`
+- generated fields: `summary`, `control_parameters_json`, `top_parameters_json`
+- context fields: `on_time_count`, `delayed_count`, `avg_delay_hours`, metrics JSON columns
+- debug fields: `raw_response`, `generation_ts`, `error`
+
+### `opt_scores.csv` (review output)
+
+Key columns:
+- keys: `sample_id`, `prompt_id`, `run_id`
+- rubric: `lever_compliance`, `data_grounding`, `specificity`,
+  `actionability`, `formatting_compliance`, `summary_quality`, `simulatable`
+- aggregate/debug: `overall_score`, `reviewer_details`, `review_ts`, `review_error`
+
+## Troubleshooting
+
+### 1) 429 / rate-limit errors
+
+Symptoms:
+- Terminal logs show `RateLimitError` with code 429.
+- Output CSV contains rows with non-empty `error`.
+
+What to do:
+- Re-run with lower concurrency:
+  ```powershell
+  py validation/run_validation.py --phase 1 --workers 3
+  ```
+- Keep retries enabled (already implemented in generation and reviewer calls).
+- Use `--force` if you changed prompts/rubrics and want a clean rerun.
+
+### 2) Missing scores in stats
+
+Symptoms:
+- Fewer rows than expected in `*_scores.csv`.
+
+Causes:
+- Generation failures (non-empty `error`) are filtered before scoring.
+- Cached old rows reused when `--force` is not passed after code changes.
+
+Fix:
+```powershell
+py validation/run_validation.py --phase 1 --force
+py validation/run_validation.py --phase 2
+```
+
+### 3) ANOVA warnings or unstable stats
+
+Symptoms:
+- Very low variance in one prompt, or warning messages in output.
+
+What to do:
+- Increase sample size (`--n`).
+- Check for degenerate prompt behavior (all identical responses).
+- Verify prompt outputs are actually distinct across A/B/C.
+
+## Reproducibility Notes
+
+- Sampling is deterministic (`seed=42`) in `sampling.py`.
+- Prompt text is versioned in `prompts.py`.
+- Rubric logic is versioned in `rubrics.py`.
+- Stats are reproducible from stored score CSVs using:
+  ```powershell
+  py validation/03_statistical_comparison.py --experiment both
+  ```
+
+## Suggested Submission Artifacts
+
+For assignment screenshots and links, include:
+
+1. **System in action**: terminal running `--phase 1` or `--phase 2`.
+2. **One evaluated report**: one row from `shipment_scores.csv` or `opt_scores.csv`.
+3. **Prompt comparison plot**:
+   - `validation/data/shipment_scores_boxplot.png`
+   - `validation/data/opt_scores_boxplot.png`
+4. **Final stats markdown**:
+   - `validation/data/shipment_stats_summary.md`
+   - `validation/data/opt_stats_summary.md`
 
 ## Notes on a small dataset
 
