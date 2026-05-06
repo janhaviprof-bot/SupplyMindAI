@@ -1,0 +1,13 @@
+# Validation experiment dependencies.
+# Install with: pip install -r validation/requirements.txt
+#
+# These are intentionally separate from SupplyMindAI/requirements.txt so the
+# production app stays lean. Validation scripts import db.supabase_client and
+# the analysis pipelines from the parent project via sys.path adjustment.
+
+openai>=1.0.0
+psycopg2-binary>=2.9.9
+python-dotenv>=1.0.0
+pandas>=2.0.0
+scipy>=1.11.0
+pingouin>=0.5.4

@@ -7,3 +7,4 @@ SupplyMindAI/supplymind_db/live_complete_dump.sql
 __pycache__/
 .venv/
 venv/
+.cursorignore
