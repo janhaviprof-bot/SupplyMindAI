@@ -202,6 +202,7 @@ OPTIMIZATION_AI_CRITERIA = (
     "data_grounding",
     "specificity",
     "actionability",
+    "formatting_compliance",
     "summary_quality",
 )
 OPTIMIZATION_BOOL_CRITERIA = ("simulatable",)
@@ -301,7 +302,14 @@ SCORING DISCIPLINE (important):
    - 2: Abstract actions with weak implementation guidance.
    - 1-0: Not actionable in practice.
 
-5. **summary_quality** (0-5) - Is the `summary` concise (<=100 words) and informative about findings?
+5. **formatting_compliance** (0-5) - Does output obey the required report structure cleanly?
+   - 5: `summary` is <=100 words; `control_parameters` is a list of 3-4 strings; `top_parameters` is a list of 2-3 objects each with non-empty `label` + `detail`; no markdown-style artifacts in fields.
+   - 4: Exactly one minor structure issue (e.g., one short/incomplete detail) but overall schema is usable.
+   - 3: Multiple minor format issues OR one major issue (wrong list length / one malformed item).
+   - 2: Significant structure drift (several malformed items, very inconsistent lengths/fields).
+   - 1-0: Severely non-compliant structure; mostly unusable as recommendation-card content.
+
+6. **summary_quality** (0-5) - Is the `summary` concise (<=100 words) and informative about findings?
    - 5: <=100 words, identifies main bottleneck, cites concrete evidence, and links to recommendation direction.
    - 4: Concise and informative but misses one evidence/linkage element.
    - 3: Concise but generic, with limited insight.
@@ -317,6 +325,7 @@ Return ONLY this JSON, no markdown:
   "data_grounding": 0-5,
   "specificity": 0-5,
   "actionability": 0-5,
+  "formatting_compliance": 0-5,
   "summary_quality": 0-5,
   "details": "<= 40 word justification"
 }}

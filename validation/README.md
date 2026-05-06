@@ -3,7 +3,7 @@
 A separate, self-contained validation experiment for the SupplyMind AI app.
 It compares **three prompt variants (A / B / C)** for two AI-generated
 outputs in the production app, scores them with an AI reviewer using a
-**custom domain-specific rubric**, and runs **t-test / ANOVA / regression**
+**custom domain-specific rubric**, and runs **t-tests + ANOVA**
 to determine whether one prompt is significantly better than the others.
 
 The plan that drove this implementation lives at
@@ -29,7 +29,7 @@ pip install -r validation/requirements.txt
 py validation/run_validation.py --phase 1 --n 3
 py validation/run_validation.py --phase 2
 
-# 4. Full run (default N=50 samples per prompt; higher cost/time)
+# 4. Full run (default N=30 samples per prompt; moderate cost/time)
 py validation/run_validation.py --phase 1
 py validation/run_validation.py --phase 2
 
@@ -54,7 +54,7 @@ validation/
   sampling.py                      # Deterministic sample selection
   01_generate_reports.py           # Generate reports for each prompt variant
   02_ai_quality_control.py         # AI reviewer scores reports
-  03_statistical_comparison.py     # t-test, ANOVA, regression, ICC
+  03_statistical_comparison.py     # t-tests + ANOVA
   run_validation.py                # Two-phase wrapper (generate+review, then stats)
   data/
     shipment_reports.csv           # Generated reports (one row per sample x prompt)
@@ -63,7 +63,7 @@ validation/
     opt_reports.csv
     opt_scores.csv
     opt_stats_summary.md
-    reviewer_reliability.csv       # Repeat scores for ICC
+    reviewer_reliability.csv       # Reviewer repeat scores (optional archive)
 ```
 
 ## Prompt variants
@@ -117,16 +117,9 @@ adds a small targeted addendum for B and C.
 For each experiment, `03_statistical_comparison.py` runs:
 
 1. Descriptive stats per prompt (n, mean, SD, per-criterion means).
-2. Bartlett's test for variance equality on `overall_score`.
-3. One-way ANOVA on `overall_score ~ prompt_id` (Welch's if variances unequal).
-4. Pairwise t-tests (A-vs-B, A-vs-C, B-vs-C) with Holm correction.
-5. Per-criterion ANOVA so we can see WHICH dimension a prompt improved.
-6. Linear regression `overall_score ~ prompt + covariates` so the prompt
-   effect is reported after controlling for input difficulty.
-7. Chi-squared test of independence for the boolean criterion across prompts.
-8. Intra-class correlation on the reliability subset (5 reports x 2 repeats)
-   to demonstrate reviewer stability.
-9. Verdict block: best prompt + p-value.
+2. One-way ANOVA on `overall_score ~ prompt_id`.
+3. Pairwise t-tests (A-vs-B, A-vs-C, B-vs-C) with Holm correction.
+4. Verdict block: best prompt + p-value.
 
 ## Cost / runtime
 
@@ -176,7 +169,7 @@ Cost optimizations baked in:
 | Customized validation framework | [`rubrics.py`](rubrics.py) - domain-specific rubric, not generic Likert |
 | Qualitative content analysis | [`02_ai_quality_control.py`](02_ai_quality_control.py) - AI reviewer is the systematic evaluator |
 | Experimental design | [`prompts.py`](prompts.py) (A/B/C) + [`sampling.py`](sampling.py) (>=20 samples per prompt) -> 60+ scores per experiment |
-| Statistical analysis | [`03_statistical_comparison.py`](03_statistical_comparison.py) - Bartlett -> ANOVA -> pairwise t-tests -> regression -> ICC |
+| Statistical analysis | [`03_statistical_comparison.py`](03_statistical_comparison.py) - ANOVA + pairwise t-tests |
 | Implementation | This folder. Working CLI scripts that import the existing app pipelines via `sys.path` adjustment, so the production app is unchanged. |
 
 ## Notes on a small dataset
@@ -184,7 +177,7 @@ Cost optimizations baked in:
 The shipped demo DB has 5 shipments. The validation experiment scales by
 **replicating each unique input across multiple `run_id`s** at
 `temperature=0.3`, so each (shipment, run) pair produces an independent draw.
-With 20 samples per prompt that yields 60 generations and 60 reviewer scores
+With 30 samples per prompt that yields 90 generations and 90 reviewer scores
 per experiment, which is enough for a one-way ANOVA. If you load a larger
 DB, the sampler automatically picks up to 20 unique shipments before
 falling back to replication.

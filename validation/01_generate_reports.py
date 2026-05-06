@@ -14,8 +14,8 @@ Caching:
   (sample_id, prompt_id) pairs are generated. Use --force to ignore the cache.
 
 Cost / time:
-  Generation uses gpt-4o-mini (matching production). 60 calls per experiment
-  by default (20 samples x 3 prompts). With --workers 10 parallelism the full
+  Generation uses gpt-4o-mini (matching production). 90 calls per experiment
+  by default (30 samples x 3 prompts). With --workers 10 parallelism the full
   run is ~1-2 min.
 """
 from __future__ import annotations
@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -71,6 +72,7 @@ DEFAULT_WORKERS = 8
 DATA_DIR = _THIS.parent / "data"
 SHIPMENT_CSV = DATA_DIR / "shipment_reports.csv"
 OPT_CSV = DATA_DIR / "opt_reports.csv"
+MAX_API_ATTEMPTS = 6
 
 
 def _load_env():
@@ -102,6 +104,41 @@ def _strip_code_fences(text: str) -> str:
         if text.endswith("```"):
             text = text.rsplit("```", 1)[0]
     return text.strip()
+
+
+def _retry_delay_seconds(err: Exception, attempt: int) -> float:
+    """Choose retry delay, preferring API-provided wait hints when present."""
+    msg = str(err)
+    # OpenAI error strings often include: "Please try again in 3.465s" or "99ms".
+    m = re.search(r"Please try again in\s+([0-9]*\.?[0-9]+)\s*(ms|s)", msg, re.IGNORECASE)
+    if m:
+        value = float(m.group(1))
+        unit = m.group(2).lower()
+        return value / 1000.0 if unit == "ms" else value
+    # Fallback exponential backoff capped at 10s.
+    return min(10.0, 0.5 * (2 ** (attempt - 1)))
+
+
+def _chat_completion_with_retries(client, *, model: str, messages: list[dict], temperature: float):
+    """Call OpenAI chat completions with retry on 429 and transient failures."""
+    last_err: Exception | None = None
+    for attempt in range(1, MAX_API_ATTEMPTS + 1):
+        try:
+            return client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+            )
+        except Exception as e:
+            last_err = e
+            msg = str(e).lower()
+            is_retryable = ("429" in msg) or ("rate limit" in msg) or ("timeout" in msg)
+            if (not is_retryable) or attempt == MAX_API_ATTEMPTS:
+                raise
+            delay = _retry_delay_seconds(e, attempt)
+            time.sleep(delay)
+    # Should never happen, but keeps type-checkers happy.
+    raise RuntimeError(f"OpenAI call failed after retries: {last_err}")
 
 
 # ---------------------------------------------------------------------------
@@ -152,7 +189,8 @@ def _generate_shipment_one(
     confidence = None
     raw_response = ""
     try:
-        resp = client.chat.completions.create(
+        resp = _chat_completion_with_retries(
+            client,
             model=GEN_MODEL,
             messages=[{"role": "user", "content": prompt_text}],
             temperature=temperature,
@@ -322,7 +360,8 @@ def _generate_optimization_one(
     top_parameters: list = []
     raw_response = ""
     try:
-        resp = client.chat.completions.create(
+        resp = _chat_completion_with_retries(
+            client,
             model=GEN_MODEL,
             messages=[{"role": "user", "content": prompt_text}],
             temperature=temperature,
@@ -435,8 +474,8 @@ def main():
         "--experiment", required=True, choices=("shipment", "optimization"),
         help="Which experiment to run.",
     )
-    p.add_argument("--n", type=int, default=20,
-                   help="Number of samples per prompt (default 20).")
+    p.add_argument("--n", type=int, default=30,
+                   help="Number of samples per prompt (default 30).")
     p.add_argument("--workers", type=int, default=DEFAULT_WORKERS,
                    help="Concurrent OpenAI requests (default 8).")
     p.add_argument("--temperature", type=float, default=DEFAULT_TEMPERATURE,

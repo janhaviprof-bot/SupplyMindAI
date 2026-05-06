@@ -6,15 +6,9 @@ scores produced by 02_ai_quality_control.py.
 
 For each experiment the script:
   1. Reports descriptive stats per prompt (mean, SD, n).
-  2. Runs Bartlett's test for variance equality.
-  3. Runs one-way ANOVA (Welch's if variances unequal).
-  4. Runs pairwise t-tests with Holm correction.
-  5. Runs per-criterion ANOVA to identify which dimensions changed.
-  6. Runs a linear regression of overall_score on prompt + covariates.
-  7. Tests independence of the boolean criterion (policy_compliant / simulatable)
-     across prompts via chi-squared.
-  8. Computes reviewer ICC from reviewer_reliability.csv (if available).
-  9. Prints a verdict block and writes a Markdown summary.
+  2. Runs one-way ANOVA on overall_score.
+  3. Runs pairwise t-tests with Holm correction.
+  4. Prints a verdict block and writes a Markdown summary.
 
 Outputs:
   validation/data/shipment_stats_summary.md
@@ -29,7 +23,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pingouin as pg
-from scipy.stats import bartlett, chi2_contingency, t as t_dist
 
 _THIS = Path(__file__).resolve()
 DATA_DIR = _THIS.parent / "data"
@@ -57,6 +50,7 @@ EXPERIMENT_CONFIG = {
             "data_grounding",
             "specificity",
             "actionability",
+            "formatting_compliance",
             "summary_quality",
         ),
         "bool_criterion": "simulatable",
@@ -162,66 +156,6 @@ def _pairwise(scores: pd.DataFrame) -> pd.DataFrame:
     return res[keep].copy()
 
 
-def _pairwise_tost(scores: pd.DataFrame, delta: float) -> pd.DataFrame:
-    """
-    Two One-Sided Tests (TOST) for pairwise equivalence on overall_score.
-
-    H0: |mu_a - mu_b| >= delta
-    H1: |mu_a - mu_b| < delta
-    """
-    sub = scores.dropna(subset=["overall_score", "prompt_id"]).copy()
-    prompts = sorted(sub["prompt_id"].unique())
-    rows = []
-    alpha = 0.05
-
-    for i in range(len(prompts)):
-        for j in range(i + 1, len(prompts)):
-            a = prompts[i]
-            b = prompts[j]
-            xa = sub[sub["prompt_id"] == a]["overall_score"].astype(float).values
-            xb = sub[sub["prompt_id"] == b]["overall_score"].astype(float).values
-            n1, n2 = len(xa), len(xb)
-            if n1 < 2 or n2 < 2:
-                continue
-
-            m1, m2 = float(np.mean(xa)), float(np.mean(xb))
-            v1, v2 = float(np.var(xa, ddof=1)), float(np.var(xb, ddof=1))
-            diff = m1 - m2
-
-            # Welch standard error and Satterthwaite dof
-            se_sq = (v1 / n1) + (v2 / n2)
-            if se_sq <= 0:
-                continue
-            se = float(np.sqrt(se_sq))
-            num = se_sq ** 2
-            den = ((v1 / n1) ** 2) / (n1 - 1) + ((v2 / n2) ** 2) / (n2 - 1)
-            dof = num / den if den > 0 else (n1 + n2 - 2)
-
-            # Lower one-sided test: H0 diff <= -delta
-            t_low = (diff + delta) / se
-            p_low = 1 - t_dist.cdf(t_low, dof)
-
-            # Upper one-sided test: H0 diff >= +delta
-            t_high = (diff - delta) / se
-            p_high = t_dist.cdf(t_high, dof)
-
-            tost_p = max(p_low, p_high)
-            equivalent = (p_low < alpha) and (p_high < alpha)
-            rows.append(
-                {
-                    "A": a,
-                    "B": b,
-                    "mean_diff_A_minus_B": round(diff, 4),
-                    "delta": round(delta, 4),
-                    "p_lower": round(float(p_low), 4),
-                    "p_upper": round(float(p_high), 4),
-                    "tost_p": round(float(tost_p), 4),
-                    "equivalent_at_0.05": bool(equivalent),
-                }
-            )
-    return pd.DataFrame(rows)
-
-
 def _regression(scores: pd.DataFrame, covariates) -> pd.DataFrame:
     """Linear regression: overall_score ~ prompt + covariates."""
     sub = scores.dropna(subset=["overall_score"]).copy()
@@ -297,7 +231,7 @@ def _reliability(experiment: str, ai_criteria, out: TeeBuffer) -> None:
 # Driver
 # ---------------------------------------------------------------------------
 
-def run_experiment(experiment: str, equiv_delta: float):
+def run_experiment(experiment: str):
     cfg = EXPERIMENT_CONFIG[experiment]
     scores_path: Path = cfg["scores_csv"]
     if not scores_path.exists():
@@ -319,35 +253,11 @@ def run_experiment(experiment: str, equiv_delta: float):
     desc = _describe(scores, cfg["ai_criteria"])
     out.write(_df_to_md(desc))
 
-    # 2. Bartlett
-    out.section("2. Bartlett's test for variance equality (overall_score)")
-    groups = [
-        scores[scores["prompt_id"] == p]["overall_score"].dropna().tolist()
-        for p in sorted(scores["prompt_id"].unique())
-    ]
-    var_equal = True
-    if all(len(g) > 1 for g in groups) and len(groups) >= 2:
-        try:
-            stat, p_val = bartlett(*groups)
-            out.write(f"Bartlett statistic = {stat:.4f}, p = {p_val:.4f}")
-            var_equal = p_val >= 0.05
-            out.write(
-                f"-> {'Equal variance assumed' if var_equal else 'Unequal variance (Welch).'}"
-            )
-        except Exception as e:
-            out.write(f"(Bartlett failed: {e}; defaulting to Welch.)")
-            var_equal = False
-    else:
-        out.write("(Insufficient samples per group for Bartlett; defaulting to Welch.)")
-        var_equal = False
-
-    # 3. ANOVA
-    out.section("3. One-way ANOVA on overall_score")
+    # 2. ANOVA
+    out.section("2. One-way ANOVA on overall_score")
     try:
-        anova_df = (pg.anova(dv="overall_score", between="prompt_id", data=scores)
-                    if var_equal else
-                    pg.welch_anova(dv="overall_score", between="prompt_id", data=scores))
-        out.write("Used " + ("classical ANOVA" if var_equal else "Welch ANOVA"))
+        anova_df = pg.anova(dv="overall_score", between="prompt_id", data=scores)
+        out.write("Used classical ANOVA")
         out.write(_df_to_md(anova_df))
         p_col = "p_unc" if "p_unc" in anova_df.columns else "p-unc"
         anova_p = float(anova_df[p_col].values[0])
@@ -356,68 +266,20 @@ def run_experiment(experiment: str, equiv_delta: float):
         out.write(f"(ANOVA failed: {e})")
         anova_p, anova_f = float("nan"), float("nan")
 
-    # 4. Pairwise
-    out.section("4. Pairwise t-tests (Holm-corrected)")
+    # 3. Pairwise
+    out.section("3. Pairwise t-tests (Holm-corrected)")
     pw = _pairwise(scores)
     if pw.empty:
         out.write("(could not compute pairwise tests)")
     else:
         out.write(_df_to_md(pw.round(4)))
 
-    # 5. Pairwise equivalence (TOST)
-    out.section("5. Pairwise equivalence tests (TOST) on overall_score")
-    out.write(f"Equivalence margin: +/- {equiv_delta:.3f} points")
-    eq = _pairwise_tost(scores, equiv_delta)
-    if eq.empty:
-        out.write("(could not compute equivalence tests)")
-    else:
-        out.write(_df_to_md(eq))
-
-    # 6. Per-criterion ANOVA
-    out.section("6. Per-criterion ANOVA (which dimensions changed?)")
-    per_crit = _per_criterion_anova(scores, cfg["ai_criteria"], var_equal)
-    if per_crit.empty:
-        out.write("(no AI criteria with usable data)")
-    else:
-        out.write(_df_to_md(per_crit))
-
-    # 7. Regression
-    out.section("7. Linear regression: overall_score ~ prompt + covariates")
-    out.write(f"Covariates: {', '.join(cfg['covariates'])}")
-    reg = _regression(scores, cfg["covariates"])
-    if reg.empty:
-        out.write("(regression unavailable)")
-    else:
-        keep_cols = [c for c in ("names", "coef", "se", "T", "pval", "r2", "adj_r2")
-                     if c in reg.columns]
-        out.write(_df_to_md(reg[keep_cols].round(4)))
-
-    # 8. Boolean criterion
-    out.section(f"8. Pass-rate analysis: {cfg['bool_criterion']}")
-    _bool_summary(scores, cfg["bool_criterion"], out)
-
-    # 9. Reviewer reliability
-    out.section("9. Reviewer reliability (intra-class correlation)")
-    _reliability(experiment, cfg["ai_criteria"], out)
-
-    # 10. Verdict
-    out.section("10. Verdict")
+    # 4. Verdict
+    out.section("4. Verdict")
     means = (scores.groupby("prompt_id")["overall_score"].mean()
              .sort_values(ascending=False).round(3))
     best_prompt = means.index[0] if len(means) else "?"
     out.write(f"Mean overall_score by prompt (high to low): {dict(means)}")
-    if not eq.empty:
-        eq_true = eq["equivalent_at_0.05"].sum()
-        out.write(
-            f"Pairwise equivalence (TOST, delta={equiv_delta:.3f}): "
-            f"{eq_true}/{len(eq)} pairs equivalent at alpha=0.05."
-        )
-        for _, row in eq.iterrows():
-            if bool(row["equivalent_at_0.05"]):
-                out.write(
-                    f"- {row['A']} vs {row['B']}: equivalent "
-                    f"(diff={row['mean_diff_A_minus_B']}, tost_p={row['tost_p']})."
-                )
     out.write("")
     if anova_p == anova_p and anova_p < 0.05:
         out.write(f"ANOVA: F = {anova_f:.3f}, p = {anova_p:.4f} -> "
@@ -445,24 +307,14 @@ def main():
         "--experiment", required=True, choices=("shipment", "optimization", "both"),
         help="Which experiment to analyze (or both).",
     )
-    p.add_argument(
-        "--equiv-delta",
-        type=float,
-        default=0.10,
-        help=(
-            "TOST equivalence margin on overall_score (default 0.10 points). "
-            "If all pairwise tests are equivalent, prompts are practically tied "
-            "within +/-delta."
-        ),
-    )
     args = p.parse_args()
 
     if args.experiment == "both":
         for e in ("shipment", "optimization"):
             print("\n" + "=" * 72)
-            run_experiment(e, args.equiv_delta)
+            run_experiment(e)
     else:
-        run_experiment(args.experiment, args.equiv_delta)
+        run_experiment(args.experiment)
 
 
 if __name__ == "__main__":

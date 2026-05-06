@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -62,6 +63,7 @@ DEFAULT_MAX_TOKENS = 300
 DEFAULT_WORKERS = 6
 DEFAULT_RELIABILITY_N = 5
 DEFAULT_RELIABILITY_REPEATS = 2
+MAX_API_ATTEMPTS = 6
 
 DATA_DIR = _THIS.parent / "data"
 SHIPMENT_REPORTS_CSV = DATA_DIR / "shipment_reports.csv"
@@ -102,22 +104,44 @@ def _strip_code_fences(text: str) -> str:
     return text.strip()
 
 
+def _retry_delay_seconds(err: Exception, attempt: int) -> float:
+    """Choose retry delay, preferring API-provided wait hints when present."""
+    msg = str(err)
+    m = re.search(r"Please try again in\s+([0-9]*\.?[0-9]+)\s*(ms|s)", msg, re.IGNORECASE)
+    if m:
+        value = float(m.group(1))
+        unit = m.group(2).lower()
+        return value / 1000.0 if unit == "ms" else value
+    return min(10.0, 0.5 * (2 ** (attempt - 1)))
+
+
 def _call_reviewer(client, model: str, prompt: str, temperature: float,
                    max_tokens: int) -> dict:
     """One reviewer call. Raises on hard error; caller wraps as needed."""
-    resp = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system",
-             "content": "You are a strict QC validator. Return only valid JSON."},
-            {"role": "user", "content": prompt},
-        ],
-        response_format={"type": "json_object"},
-        temperature=temperature,
-        max_tokens=max_tokens,
-    )
-    raw = resp.choices[0].message.content or ""
-    return json.loads(_strip_code_fences(raw))
+    last_err: Exception | None = None
+    for attempt in range(1, MAX_API_ATTEMPTS + 1):
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system",
+                     "content": "You are a strict QC validator. Return only valid JSON."},
+                    {"role": "user", "content": prompt},
+                ],
+                response_format={"type": "json_object"},
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            raw = resp.choices[0].message.content or ""
+            return json.loads(_strip_code_fences(raw))
+        except Exception as e:
+            last_err = e
+            msg = str(e).lower()
+            is_retryable = ("429" in msg) or ("rate limit" in msg) or ("timeout" in msg)
+            if (not is_retryable) or attempt == MAX_API_ATTEMPTS:
+                raise
+            time.sleep(_retry_delay_seconds(e, attempt))
+    raise RuntimeError(f"Reviewer call failed after retries: {last_err}")
 
 
 def _coerce_score(val, lo: int = 0, hi: int = 5) -> int | None:
