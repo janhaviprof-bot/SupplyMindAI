@@ -29,8 +29,12 @@ pip install -r validation/requirements.txt
 py validation/run_validation.py --phase 1 --n 3
 py validation/run_validation.py --phase 2
 
-# 4. Full run (~$0.15-$0.25, ~5-10 minutes total)
+# 4. Full run (default N=50 samples per prompt; higher cost/time)
 py validation/run_validation.py --phase 1
+py validation/run_validation.py --phase 2
+
+# 5. Override sample size (more/less samples per prompt)
+py validation/run_validation.py --phase 1 --n 20
 py validation/run_validation.py --phase 2
 ```
 
@@ -79,9 +83,8 @@ adds a small targeted addendum for B and C.
 - **A (baseline)** - mirrors the production recommendation prompt.
 - **B (lever-strict)** - every `control_parameters` item MUST start with
   one of the canonical lever prefixes (`Hub <Name>`, `Route <X>`, etc.).
-- **C (data-grounded)** - the `summary` MUST cite >=2 hubs from
-  `top_delayed_hubs`, >=1 category from `common_risk_categories`, and
-  the `avg_delay_hours` number.
+- **C (negative control)** - intentionally weaker comparator for stress-testing
+  statistical separation (keeps valid JSON but encourages generic, low-specificity output).
 
 ## Custom rubrics (not generic Likert)
 

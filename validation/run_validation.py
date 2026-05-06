@@ -66,16 +66,33 @@ def phase1(n: int | None, workers: int, temperature: float, force: bool,
     _run(common_qc + ["--experiment", "optimization"] + qc_flags)
 
 
-def phase2() -> None:
-    _run([sys.executable, "validation/03_statistical_comparison.py", "--experiment", "both"])
+def phase2(equiv_delta: float) -> None:
+    _run(
+        [
+            sys.executable,
+            "validation/03_statistical_comparison.py",
+            "--experiment",
+            "both",
+            "--equiv-delta",
+            str(equiv_delta),
+        ]
+    )
 
 
 def main() -> None:
     p = argparse.ArgumentParser(description=__doc__.strip().splitlines()[0])
     p.add_argument("--phase", type=int, choices=(1, 2), required=True,
                    help="Phase 1 = generate + review, Phase 2 = stats")
-    p.add_argument("--n", type=int, default=None,
-                   help="Smoke test: score only first N samples per prompt")
+    p.add_argument(
+        "--n",
+        type=int,
+        default=50,
+        help=(
+            "Number of samples per prompt to run (default 50). "
+            "Use --n 3 for a cheap smoke test; use larger values (e.g. 50/100) "
+            "for more statistical power."
+        ),
+    )
     p.add_argument("--workers", type=int, default=8,
                    help="Concurrent OpenAI requests")
     p.add_argument("--temperature", type=float, default=0.3,
@@ -92,8 +109,16 @@ def main() -> None:
                    help="Reliability subset size (default 5)")
     p.add_argument("--reliability-repeats", type=int, default=2,
                    help="Repeated reviewer scoring per reliability sample (default 2)")
+    p.add_argument(
+        "--equiv-delta",
+        type=float,
+        default=0.10,
+        help=(
+            "Phase 2 only: TOST equivalence margin on overall_score "
+            "(default 0.10)."
+        ),
+    )
     args = p.parse_args()
-
     if args.phase == 1:
         phase1(
             n=args.n,
@@ -107,7 +132,7 @@ def main() -> None:
             reliability_repeats=args.reliability_repeats,
         )
     else:
-        phase2()
+        phase2(args.equiv_delta)
 
 
 if __name__ == "__main__":

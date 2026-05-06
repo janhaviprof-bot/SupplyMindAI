@@ -1,79 +1,88 @@
 # Statistical Comparison: shipment
 
-Source: shipment_scores.csv (60 rows)
+Source: shipment_scores.csv (150 rows)
 
 ## 1. Descriptive statistics by prompt
 
 | prompt_id   |   n |   overall_mean |   overall_sd |   flag_accuracy_mean |   grounding_specificity_mean |   format_compliance_mean |   actionability_mean |   succinctness_mean |
 |:------------|----:|---------------:|-------------:|---------------------:|-----------------------------:|-------------------------:|---------------------:|--------------------:|
-| A           |  20 |           1.83 |        1.176 |                 4.35 |                         1    |                     1.6  |                 0.6  |                 1.6 |
-| B           |  20 |           1.88 |        1.113 |                 4.6  |                         1    |                     1.6  |                 0.6  |                 1.6 |
-| C           |  20 |           1.76 |        1.118 |                 4.45 |                         0.75 |                     1.45 |                 0.45 |                 1.7 |
+| A           |  50 |          1.736 |        1.091 |                 4.52 |                         1.18 |                     1.12 |                 0.74 |                1.12 |
+| B           |  50 |          1.948 |        1.223 |                 4.54 |                         0.98 |                     1.74 |                 0.74 |                1.74 |
+| C           |  50 |          0.656 |        1.2   |                 1.2  |                         0.2  |                     0.86 |                 0.14 |                0.88 |
 
 ## 2. Bartlett's test for variance equality (overall_score)
 
-Bartlett statistic = 0.0695, p = 0.9658
+Bartlett statistic = 0.7111, p = 0.7008
 -> Equal variance assumed
 
 ## 3. One-way ANOVA on overall_score
 
 Used classical ANOVA
-| Source    |   ddof1 |   ddof2 |         F |    p_unc |       np2 |
-|:----------|--------:|--------:|----------:|---------:|----------:|
-| prompt_id |       2 |      57 | 0.0563216 | 0.945288 | 0.0019723 |
+| Source    |   ddof1 |   ddof2 |       F |       p_unc |      np2 |
+|:----------|--------:|--------:|--------:|------------:|---------:|
+| prompt_id |       2 |     147 | 17.4463 | 1.59008e-07 | 0.191831 |
 
 ## 4. Pairwise t-tests (Holm-corrected)
 
 | A   | B   |       T |   hedges |
 |:----|:----|--------:|---------:|
-| A   | B   | -0.1381 |  -0.0428 |
-| A   | C   |  0.193  |   0.0598 |
-| B   | C   |  0.3402 |   0.1054 |
+| A   | B   | -0.9144 |  -0.1815 |
+| A   | C   |  4.7081 |   0.9344 |
+| B   | C   |  5.3309 |   1.058  |
 
-## 5. Per-criterion ANOVA (which dimensions changed?)
+## 5. Pairwise equivalence tests (TOST) on overall_score
 
-| criterion             |     F |   p_value | significant_at_0.05   |   mean_A |   mean_B |   mean_C |
-|:----------------------|------:|----------:|:----------------------|---------:|---------:|---------:|
-| flag_accuracy         | 0.237 |    0.7901 | False                 |     4.35 |      4.6 |     4.45 |
-| grounding_specificity | 0.106 |    0.8995 | False                 |     1    |      1   |     0.75 |
-| format_compliance     | 0.034 |    0.967  | False                 |     1.6  |      1.6 |     1.45 |
-| actionability         | 0.106 |    0.8995 | False                 |     0.6  |      0.6 |     0.45 |
-| succinctness          | 0.014 |    0.9857 | False                 |     1.6  |      1.6 |     1.7  |
+Equivalence margin: +/- 0.100 points
+| A   | B   |   mean_diff_A_minus_B |   delta |   p_lower |   p_upper |   tost_p | equivalent_at_0.05   |
+|:----|:----|----------------------:|--------:|----------:|----------:|---------:|:---------------------|
+| A   | B   |                -0.212 |     0.1 |    0.6849 |    0.0908 |   0.6849 | False                |
+| A   | C   |                 1.08  |     0.1 |    0      |    1      |   1      | False                |
+| B   | C   |                 1.292 |     0.1 |    0      |    1      |   1      | False                |
 
-## 6. Linear regression: overall_score ~ prompt + covariates
+## 6. Per-criterion ANOVA (which dimensions changed?)
+
+| criterion             |      F |   p_value | significant_at_0.05   |   mean_A |   mean_B |   mean_C |
+|:----------------------|-------:|----------:|:----------------------|---------:|---------:|---------:|
+| flag_accuracy         | 96.036 |    0      | True                  |     4.52 |     4.54 |     1.2  |
+| grounding_specificity |  4.537 |    0.0122 | True                  |     1.18 |     0.98 |     0.2  |
+| format_compliance     |  2.819 |    0.0629 | False                 |     1.12 |     1.74 |     0.86 |
+| actionability         |  4.382 |    0.0142 | True                  |     0.74 |     0.74 |     0.14 |
+| succinctness          |  2.7   |    0.0706 | False                 |     1.12 |     1.74 |     0.88 |
+
+## 7. Linear regression: overall_score ~ prompt + covariates
 
 Covariates: n_future_risks, max_severity, total_stops, priority_level
-| names          |    coef |     se |       T |   pval |    r2 |   adj_r2 |
-|:---------------|--------:|-------:|--------:|-------:|------:|---------:|
-| Intercept      | -3.0258 | 3.7439 | -0.8082 | 0.4226 | 0.362 |   0.2898 |
-| prompt_B       |  0.05   | 0.2978 |  0.1679 | 0.8673 | 0.362 |   0.2898 |
-| prompt_C       | -0.07   | 0.2978 | -0.235  | 0.8151 | 0.362 |   0.2898 |
-| n_future_risks | -0.7788 | 0.5744 | -1.356  | 0.1809 | 0.362 |   0.2898 |
-| max_severity   |  0.4735 | 0.1835 |  2.5808 | 0.0127 | 0.362 |   0.2898 |
-| total_stops    |  1.57   | 1.2602 |  1.2459 | 0.2183 | 0.362 |   0.2898 |
-| priority_level | -0.0248 | 0.0522 | -0.4747 | 0.637  | 0.362 |   0.2898 |
+| names          |    coef |     se |       T |   pval |     r2 |   adj_r2 |
+|:---------------|--------:|-------:|--------:|-------:|-------:|---------:|
+| Intercept      |  2.5009 | 0.8465 |  2.9545 | 0.0037 | 0.3957 |   0.3703 |
+| prompt_B       |  0.212  | 0.2057 |  1.0307 | 0.3044 | 0.3957 |   0.3703 |
+| prompt_C       | -1.08   | 0.2057 | -5.2508 | 0      | 0.3957 |   0.3703 |
+| n_future_risks | -0.0615 | 0.1601 | -0.3843 | 0.7013 | 0.3957 |   0.3703 |
+| max_severity   |  0.2217 | 0.0692 |  3.2037 | 0.0017 | 0.3957 |   0.3703 |
+| total_stops    | -0.2609 | 0.2818 | -0.9258 | 0.3561 | 0.3957 |   0.3703 |
+| priority_level | -0.0445 | 0.0344 | -1.2921 | 0.1984 | 0.3957 |   0.3703 |
 
-## 7. Pass-rate analysis: policy_compliant
+## 8. Pass-rate analysis: policy_compliant
 
 
 ### Boolean criterion: policy_compliant (deterministic)
 
 | prompt_id   |   pass_rate |   n |   n_pass |
 |:------------|------------:|----:|---------:|
-| A           |        0.85 |  20 |       17 |
-| B           |        0.85 |  20 |       17 |
-| C           |        0.85 |  20 |       17 |
+| A           |        0.86 |  50 |       43 |
+| B           |        0.86 |  50 |       43 |
+| C           |        0.78 |  50 |       39 |
 
-Chi-squared test of independence: chi2=0.000, dof=2, p=1.0000 -> not significant at alpha=0.05.
+Chi-squared test of independence: chi2=1.536, dof=2, p=0.4639 -> not significant at alpha=0.05.
 
-## 8. Reviewer reliability (intra-class correlation)
+## 9. Reviewer reliability (intra-class correlation)
 
-Intra-class correlation (reviewer stability on overall_score):
-(ICC computation failed: "['Description', 'CI95%'] not in index")
+(no reliability rows for experiment=shipment; skipping ICC.)
 
-## 9. Verdict
+## 10. Verdict
 
-Mean overall_score by prompt (high to low): {'B': np.float64(1.88), 'A': np.float64(1.83), 'C': np.float64(1.76)}
+Mean overall_score by prompt (high to low): {'B': np.float64(1.948), 'A': np.float64(1.736), 'C': np.float64(0.656)}
+Pairwise equivalence (TOST, delta=0.100): 0/3 pairs equivalent at alpha=0.05.
 
-ANOVA: F = 0.056, p = 0.9453 -> NOT statistically significant at alpha = 0.05. With this dataset we cannot conclude one prompt is better than the others.
-Highest-mean prompt: B (mean = 1.88), but the difference may be due to chance.
+ANOVA: F = 17.446, p = 0.0000 -> prompt choice has a statistically significant effect on overall quality (alpha = 0.05).
+Best prompt overall: **B** (mean = 1.948).

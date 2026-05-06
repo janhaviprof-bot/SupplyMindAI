@@ -266,30 +266,47 @@ _OPTIMIZATION_REVIEWER_PROMPT = """You are a strict quality control validator fo
 
 # Rubric (score each on 0-5; use the anchors below)
 
+SCORING DISCIPLINE (important):
+- Use the full 0-5 scale; avoid defaulting to 4.
+- Score 5 only when the criterion is fully satisfied with no material gaps.
+- Score 4 only when there is exactly one minor issue.
+- Score 3 when there are clear but moderate issues.
+- Score 2 or below when the output is generic, weakly grounded, or hard to execute.
+
 1. **lever_compliance** (0-5) - How well do the `control_parameters` map to one of the 5 levers above?
-   - 5: All control_parameters map cleanly to one of the 5 levers with the canonical phrasing.
-   - 3: Most map cleanly; one item is ambiguous or uses non-canonical phrasing.
-   - 0: Items name un-simulatable actions (alternate routing, supplier changes, material changes).
+   - 5: Every item maps cleanly to one of the 5 levers and uses canonical phrasing.
+   - 4: All items map, but one item has minor phrasing ambiguity.
+   - 3: At least one item is ambiguous/non-canonical OR one item weakly maps.
+   - 2: Multiple items are ambiguous or only loosely map to levers.
+   - 1-0: Un-simulatable actions appear (alternate routing, supplier/material changes).
 
 2. **data_grounding** (0-5) - Do the `summary` and `control_parameters` cite real values from the source data?
-   - 5: Cites at least 2 hubs from top_delayed_hubs AND a category from common_risk_categories AND a number from the metrics.
-   - 3: Cites at least one hub OR one category from the source data.
-   - 0: Cites hubs / categories / numbers that are not in the source data, or omits all data references.
+   - 5: Cites >=2 exact hubs from top_delayed_hubs, >=1 exact risk category, and >=1 numeric metric from source data.
+   - 4: Cites >=2 exact hubs and >=1 numeric metric, but misses category OR has one weak reference.
+   - 3: Cites at least one real hub/category/number but grounding is partial.
+   - 2: Mostly generic statements with minimal concrete citations.
+   - 1-0: Fabricates values or omits concrete source references.
 
 3. **specificity** (0-5) - Does each control_parameter name a concrete hub or route, not a vague target?
-   - 5: Every item names a specific hub or route from the data.
-   - 3: One item is vague ("Shipments:", "All hubs:") but the rest are specific.
-   - 0: Multiple vague targets.
+   - 5: Every control item names a concrete hub/route from the source data.
+   - 4: One item is slightly generic but still operationally specific.
+   - 3: One item is vague ("Shipments:", "All hubs:") or lacks concrete target.
+   - 2: Multiple vague targets.
+   - 1-0: Predominantly generic recommendations.
 
 4. **actionability** (0-5) - Could a supply-chain manager implement these recommendations directly?
-   - 5: Each recommendation has a clear owner (hub/route) and lever, and `top_parameters.detail` gives implementable steps.
-   - 3: Recommendations are clear but one or more lacks an implementation detail.
-   - 0: Recommendations are too abstract to act on.
+   - 5: Clear owner + lever for each item, and top_parameters include concrete implementation steps.
+   - 4: Mostly implementable; one detail is underspecified.
+   - 3: Understandable actions but several missing operational details.
+   - 2: Abstract actions with weak implementation guidance.
+   - 1-0: Not actionable in practice.
 
 5. **summary_quality** (0-5) - Is the `summary` concise (<=100 words) and informative about findings?
-   - 5: <=100 words, names the main bottleneck and the recommended class of action.
-   - 3: Within length but generic.
-   - 0: Way over 100 words, or vacuous.
+   - 5: <=100 words, identifies main bottleneck, cites concrete evidence, and links to recommendation direction.
+   - 4: Concise and informative but misses one evidence/linkage element.
+   - 3: Concise but generic, with limited insight.
+   - 2: Vague summary or weakly connected to recommendations.
+   - 1-0: Over-length, vacuous, or contradictory.
 
 # Output schema
 
